@@ -3,7 +3,6 @@ services:
     runtime: docker
     name: AlphaClaw
     plan: starter
-    dockerCommand: /debug-start.sh
     healthCheckPath: /health
     envVars:
       - key: SETUP_PASSWORD
