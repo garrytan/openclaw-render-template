@@ -14,6 +14,10 @@ RUN printf '#!/bin/sh\nexec /app/node_modules/.bin/openclaw "$@"\n' > /usr/bin/o
  && ln -sf /app/node_modules/.bin/alphaclaw /usr/local/bin/alphaclaw \
  && /usr/bin/openclaw --version
 
+COPY start.sh /start.sh
+COPY failure-server.js /failure-server.js
+RUN chmod +x /start.sh
+
 ENV PATH="/app/node_modules/.bin:$PATH"
 ENV ALPHACLAW_ROOT_DIR=/data
 
@@ -22,4 +26,4 @@ RUN mkdir -p /data
 EXPOSE 3000
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["alphaclaw", "start"]
+CMD ["/start.sh"]
