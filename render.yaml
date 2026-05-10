@@ -3,6 +3,7 @@ services:
     runtime: docker
     name: AlphaClaw
     plan: starter
+    dockerCommand: sh -c "node -e \"require('http').createServer((_,r)=>r.end('ok')).listen(3000,'0.0.0.0',()=>console.log('debug listener up on 3000'))\" & sleep 3 && /app/node_modules/.bin/alphaclaw start 2>&1; echo ALPHACLAW_EXITED_$?; tail -f /dev/null"
     healthCheckPath: /health
     envVars:
       - key: SETUP_PASSWORD
