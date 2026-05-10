@@ -14,6 +14,11 @@ export PATH="/app/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/us
 {
   echo "=== boot $(date -u +%FT%TZ) ==="
   echo "PATH=$PATH"
+  # Log the installed versions so users can see what is actually running
+  # without exec-ing into the container. Useful when the weekly auto-update
+  # cron rebuilds the image and behaviour changes might be version drift.
+  echo "alphaclaw version: $(alphaclaw --version 2>/dev/null || echo 'not found')"
+  echo "openclaw  version: $(openclaw  --version 2>/dev/null || echo 'not found')"
   echo "Starting alphaclaw..."
 } | tee -a "$LOGFILE"
 
