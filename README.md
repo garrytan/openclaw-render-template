@@ -63,7 +63,7 @@ Each field includes instructions and links for how to get the value. Optional fi
 
 > **Model catalog note:** Models are discovered at runtime via `openclaw models list --all --json`. This keeps the setup UI aligned with the OpenClaw version installed in your deployment.
 >
-> **Versioning note:** Template builds intentionally install `openclaw@latest` during Docker build, so new Render deploys pick up the newest OpenClaw release automatically.
+> **Versioning note:** Template builds intentionally install `openclaw@latest` during Docker build, so new Render deploys pick up the newest OpenClaw release automatically. See [Auto-updates](#auto-updates) below to schedule weekly redeploys.
 >
 > **Codex OAuth note:** OpenClaw onboarding runs in non-interactive mode here. For OAuth-only Codex setups, the wrapper uses `--auth-choice skip` and then applies your selected `openai-codex/*` model after onboarding.
 
@@ -124,6 +124,26 @@ The server watches `/data/.env` for changes — including ones written by the Op
 | `TELEGRAM_BOT_TOKEN`       | Channels    | From [@BotFather](https://t.me/BotFather) · [full guide](https://docs.openclaw.ai/channels/telegram)                           |
 | `DISCORD_BOT_TOKEN`        | Channels    | From [Developer Portal](https://discord.com/developers/applications) · [full guide](https://docs.openclaw.ai/channels/discord) |
 | `BRAVE_API_KEY`            | Tools       | From [brave.com/search/api](https://brave.com/search/api/) — free tier available                                               |
+
+## Auto-updates
+
+The Blueprint ships with a weekly cron service (`openclaw-auto-update`) that curls a Render deploy hook every Monday at 9am UTC. Each deploy rebuilds the image and pulls `openclaw@latest`, so a stale container can't drift more than a week behind the OpenClaw release stream.
+
+The cron is a no-op until you wire up the deploy hook:
+
+1. In the Render dashboard, open **AlphaClaw** -> **Settings** -> **Deploy Hooks** -> **Create Deploy Hook**. Copy the URL.
+2. Open **openclaw-auto-update** -> **Environment**, click **Add Environment Variable**, and set `RENDER_DEPLOY_HOOK_URL` to the URL from step 1.
+3. The next Monday 9am UTC, the cron fires and your AlphaClaw service rebuilds with whatever OpenClaw release is current at that moment.
+
+To opt out, remove the cron service from `render.yaml` (or just leave `RENDER_DEPLOY_HOOK_URL` unset — the cron logs `auto-update skipped` and exits cleanly). Render Cron Jobs bill at $1/month on Starter; combined with the AlphaClaw service, that's $86/mo instead of $85/mo for the same workload — the kind of trade you might prefer to make consciously, so it's opt-in.
+
+Check the container's boot log (`/data/start.log` or the Render Logs tab) for the actual versions running:
+
+```
+=== boot 2026-05-10T17:45:00Z ===
+alphaclaw version: 0.9.15
+openclaw  version: 1.4.2
+```
 
 ## Architecture
 

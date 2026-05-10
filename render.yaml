@@ -17,3 +17,20 @@ services:
       name: openclaw-data
       mountPath: /data
       sizeGB: 10
+
+  # Weekly auto-update: curls a Render deploy hook so the image rebuilds with
+  # openclaw@latest. The README's "Versioning note" promises new deploys pick
+  # up the newest release, but nothing was triggering deploys. Set
+  # RENDER_DEPLOY_HOOK_URL in the Render dashboard (Service Settings -> Deploy
+  # Hooks -> Create) to enable; leaving it unset turns this into a no-op.
+  # Mondays 9am UTC keeps it out of weekend hours.
+  - type: cron
+    runtime: image
+    name: openclaw-auto-update
+    image:
+      url: alpine/curl:latest
+    schedule: "0 9 * * 1"
+    envVars:
+      - key: RENDER_DEPLOY_HOOK_URL
+        sync: false
+    dockerCommand: sh -c 'if [ -n "$RENDER_DEPLOY_HOOK_URL" ]; then curl -fsSL "$RENDER_DEPLOY_HOOK_URL"; else echo "auto-update skipped (no deploy hook configured)"; fi'
