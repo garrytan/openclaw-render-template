@@ -11,6 +11,9 @@ RUN ln -sf /app/node_modules/.bin/openclaw /usr/local/bin/openclaw \
  && ln -sf /app/node_modules/.bin/alphaclaw /usr/local/bin/alphaclaw \
  && which openclaw && openclaw --version || true
 
+COPY debug-start.sh /debug-start.sh
+RUN chmod +x /debug-start.sh
+
 ENV PATH="/app/node_modules/.bin:$PATH"
 ENV ALPHACLAW_ROOT_DIR=/data
 
