@@ -22,4 +22,4 @@ RUN mkdir -p /data
 EXPOSE 3000
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["alphaclaw", "start"]
+CMD ["/debug-start.sh"]
