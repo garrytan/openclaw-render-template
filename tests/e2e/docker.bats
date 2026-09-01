@@ -90,7 +90,9 @@ in_container() {
 }
 
 @test "debug/runtime tooling is baked in" {
-  in_container 'command -v git && command -v curl && command -v vim && command -v screen'
+  # tmux is executed (not just located): alphaclaw's rescue-session probe is
+  # `tmux -V` succeeding, so presence alone isn't the property that matters.
+  in_container 'command -v git && command -v curl && command -v vim && command -v screen && tmux -V'
 }
 
 @test "tini is PID 1" {
@@ -107,7 +109,11 @@ in_container() {
   CODE="000"
   for _ in $(seq 1 30); do
     CODE=$(curl -sSL -o "$BODY" -w "%{http_code}" "http://127.0.0.1:${HOST_PORT}/" || echo 000)
-    ! grep -q "$SENTINEL" "$BODY"
+    # Enforcing form — a bare non-final `! grep` is exempt from bats errexit
+    # and would let an intermediate (503/redirect) leak slip through silently.
+    if grep -q "$SENTINEL" "$BODY"; then
+      echo "secret sentinel leaked in response (code $CODE)"; false
+    fi
     [ "$CODE" = "200" ] && break
     sleep 2
   done

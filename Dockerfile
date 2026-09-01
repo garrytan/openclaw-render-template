@@ -1,8 +1,11 @@
 FROM node:22-slim
 
-RUN apt-get update && apt-get install -y git curl procps python3 make g++ cron tini vim screen && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git curl procps python3 make g++ cron tini vim screen tmux && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g @anthropic-ai/claude-code && npm cache clean --force
+# Pinned exactly, same discipline as the alphaclaw SHA pin: an unpinned
+# install floats to latest whenever an earlier layer changes, silently
+# shipping an unreviewed claude-code. Bump deliberately and record it.
+RUN npm install -g @anthropic-ai/claude-code@2.1.252 && npm cache clean --force
 
 WORKDIR /app
 

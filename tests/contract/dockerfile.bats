@@ -37,6 +37,30 @@ setup() {
   done < <(grep -nw '/tmp' "$REPO/Dockerfile")
 }
 
+# --- tmux (rescue-session hosting) ---------------------------------------------
+
+@test "Dockerfile: installs tmux (rescue-session hosting)" {
+  # alphaclaw's local Claude Code rescue sessions probe for tmux (`tmux -V`);
+  # without it they degrade to script(1) hosting and die with every alphaclaw
+  # restart. Portable delimiters, no \b — BSD grep doesn't reliably support it.
+  grep -Eq 'apt-get install[^&]* tmux( |$)' "$REPO/Dockerfile"
+}
+
+@test "CI workflow: installs tmux so the rescue-survival test can never silently skip" {
+  # supervise.bats skips its tmux-survival test when the host lacks tmux, and
+  # bats reports skips as green — so CI must install tmux explicitly or the
+  # survival property goes unproven while CI stays green. Same delimiter
+  # rationale as above (no \b).
+  grep -Eq 'apt-get install[^&]* tmux( |$)' "$REPO/.github/workflows/test.yml"
+}
+
+@test "Dockerfile: pins @anthropic-ai/claude-code to an exact version" {
+  # Unpinned, this install floats to latest whenever an earlier layer changes
+  # (e.g. an apt edit), silently shipping an unreviewed claude-code — the same
+  # failure mode the alphaclaw SHA pin exists to prevent.
+  grep -Eq 'npm install -g @anthropic-ai/claude-code@[0-9]+\.[0-9]+\.[0-9]+' "$REPO/Dockerfile"
+}
+
 # --- Init + entrypoint --------------------------------------------------------
 
 @test "Dockerfile: uses tini -g as PID 1 (group signaling)" {

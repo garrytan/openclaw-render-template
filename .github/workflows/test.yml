@@ -13,8 +13,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Install shellcheck + bats
-        run: sudo apt-get update && sudo apt-get install -y shellcheck bats
+      - name: Install shellcheck + bats + tmux
+        # tmux is explicit, never assumed from the runner image — without it
+        # the rescue-session survival test skips and CI goes green unproven.
+        run: sudo apt-get update && sudo apt-get install -y shellcheck bats tmux
       - name: Unit tests
         run: npm run test:unit
       - name: Contract tests
