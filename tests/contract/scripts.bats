@@ -81,6 +81,43 @@ setup() {
   grep -q 'BACKOFF_STEP_SECS="\${BACKOFF_STEP_SECS:-5}"' "$REPO/start.sh"
 }
 
+# --- Orphan sweep vs rescue sessions -------------------------------------------
+# tmux-hosted rescue sessions must SURVIVE the post-exit sweep — that survival
+# is the entire point of installing tmux. pkill -f matches full argv, so the
+# default pattern must never match the tmux server or a rescue pane.
+
+@test "start.sh: ships the documented default ORPHAN_SWEEP_PATTERN" {
+  grep -qF 'ORPHAN_SWEEP_PATTERN="${ORPHAN_SWEEP_PATTERN:-(^|[ /])openclaw[^ ]* gateway run( |$)}"' "$REPO/start.sh"
+}
+
+@test "start.sh: default sweep pattern cannot match tmux rescue-session argv" {
+  # Scope of proof: the default pattern vs representative argv. Runtime
+  # ORPHAN_SWEEP_PATTERN overrides and payload argv that itself contains
+  # "openclaw … gateway" remain a documented, accepted risk.
+  # The pattern is DERIVED from start.sh (not hardcoded) so a future change to
+  # the default can't leave this test validating a stale copy. Negative checks
+  # use `run` + status: a bare non-final `! grep` is exempt from bats errexit
+  # and would assert nothing.
+  pat=$(sed -n 's/^ORPHAN_SWEEP_PATTERN="\${ORPHAN_SWEEP_PATTERN:-\(.*\)}"$/\1/p' "$REPO/start.sh")
+  [ -n "$pat" ]
+  run grep -Eq "$pat" <<<'tmux -S /data/claude-code-local/tmux.sock new-session -d -s alphaclaw-rescue'
+  [ "$status" -ne 0 ]
+  run grep -Eq "$pat" <<<'tmux -S /data/claude-code-local/tmux.sock'
+  [ "$status" -ne 0 ]
+  run grep -Eq "$pat" <<<'exec sleep 300'
+  [ "$status" -ne 0 ]
+  # ...including rescue-PANE argv that merely mentions the gateway — the
+  # operator debugging an incident is exactly who types these:
+  run grep -Eq "$pat" <<<'grep openclaw gateway /data/start.log'
+  [ "$status" -ne 0 ]
+  run grep -Eq "$pat" <<<'claude -p why does the openclaw gateway keep crashing'
+  [ "$status" -ne 0 ]
+  # sanity: still matches the gateway argv shapes it exists to sweep
+  grep -Eq "$pat" <<<'node /app/node_modules/.bin/openclaw.mjs gateway run'
+  grep -Eq "$pat" <<<'openclaw gateway run'
+  grep -Eq "$pat" <<<'openclaw gateway run --port 3000'
+}
+
 @test "start.sh: anchors the failure server's grace clock with FAILURE_EPOCH" {
   grep -q 'FAILURE_EPOCH="\$FAILURE_EPOCH" "\$NODE_BIN" "\$FAILURE_SERVER"' "$REPO/start.sh"
 }

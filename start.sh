@@ -36,10 +36,16 @@ BACKOFF_STEP_SECS="${BACKOFF_STEP_SECS:-5}"
 SPIN_BRAKE_SECS="${SPIN_BRAKE_SECS:-1}"
 CUM_BACKOFF_CAP_SECS="${CUM_BACKOFF_CAP_SECS:-30}"
 MAX_LOG_BYTES="${MAX_LOG_BYTES:-52428800}"
-# ERE for pkill/pgrep -f: gateway argv can be `node .../openclaw.mjs gateway
-# run`, so plain "openclaw gateway" would miss it. Env-overridable so the test
-# harness can point it at a tagged stub and never touch real host processes.
-ORPHAN_SWEEP_PATTERN="${ORPHAN_SWEEP_PATTERN:-openclaw[^ ]* gateway}"
+# ERE for pkill/pgrep -f: gateway argv can be `openclaw gateway run` or
+# `node .../openclaw.mjs gateway run`, so the pattern allows a suffix after
+# "openclaw" but requires the full "gateway run" phrase with an anchored left
+# edge. Deliberately tight: pkill -f matches ANYWHERE in any process's argv,
+# and tmux-hosted rescue panes are exactly where an operator types things
+# like `grep "openclaw gateway" /data/start.log` mid-incident — a looser
+# pattern would let the sweep kill the rescue session it must outlive
+# (contract-tested in scripts.bats). Env-overridable so the test harness can
+# point it at a tagged stub and never touch real host processes.
+ORPHAN_SWEEP_PATTERN="${ORPHAN_SWEEP_PATTERN:-(^|[ /])openclaw[^ ]* gateway run( |$)}"
 
 mkdir -p "$(dirname "$LOGFILE")" 2>/dev/null || true
 
