@@ -14,14 +14,19 @@ setup() {
   T="$BATS_TEST_TMPDIR"
   TAG="supervise-test-$$-${BATS_TEST_NUMBER}-tag"
 
-  # Stub alphaclaw: consumes one scenario line per invocation.
+  # Stub alphaclaw: consumes one scenario line per invocation. The sleep runs
+  # backgrounded with a TERM-forwarding trap — a foreground sleep would make
+  # bash defer TERM until the sleep finished, orphaning an untagged child
+  # that outlives teardown's pkill by up to 300s.
   cat >"$T/stub-alphaclaw" <<'STUB'
 #!/bin/bash
 n=$(cat "$STUB_DIR/count" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" >"$STUB_DIR/count"
 line=$(sed -n "${n}p" "$STUB_DIR/scenario")
 [ -z "$line" ] && line="0 300"
 code=${line%% *}; slp=${line##* }
-sleep "$slp"
+sleep "$slp" &
+trap 'kill "$!" 2>/dev/null; exit 143' TERM INT
+wait "$!"
 exit "$code"
 STUB
   chmod +x "$T/stub-alphaclaw"
@@ -60,6 +65,9 @@ teardown() {
   pkill -f "$T/stub-alphaclaw" 2>/dev/null || true
   pkill -f "$T/stub-failure-server.js" 2>/dev/null || true
   pkill -f "$TAG" 2>/dev/null || true
+  # The rescue-survival test leaves a daemonized tmux server behind; its argv
+  # contains neither $TAG nor a stub path, so it needs its own kill.
+  command -v tmux >/dev/null && tmux -S "$T/rescue.sock" kill-server 2>/dev/null || true
   wait 2>/dev/null || true
 }
 
@@ -85,13 +93,33 @@ wait_for_log() { # pattern timeout_halfsecs
   return 1
 }
 
+# Create an executable script at $T/<name>. The bash wrapper keeps <name> —
+# and thus the sweep tag — in its argv (what pgrep/pkill -f match), and
+# forwards TERM to its sleep child so nothing outlives the sweep. (A bare
+# foreground `sleep` would be orphaned untagged when the wrapper dies, and
+# `exec -a` can't carry the tag either: multi-call coreutils builds rewrite
+# argv on exec, erasing it.)
+make_tagged_sleeper() { # <name>
+  cat >"$T/$1" <<'SLEEPER'
+#!/bin/bash
+sleep 300 &
+trap 'kill "$!" 2>/dev/null; exit 143' TERM INT
+wait
+SLEEPER
+  chmod +x "$T/$1"
+}
+
 @test "exit 75 relaunches immediately and never counts as a failure" {
   printf '75 0\n75 0\n0 300\n' >"$T/scenario"
   run_supervisor
   wait_for_count 3 20
   grep -c "intentional restart" "$T/start.log" | grep -q "^2$"
-  ! grep -q "rapid failure" "$T/start.log"
-  ! grep -q "failure-status server" "$T/start.log"
+  # run + status: a bare non-final `! grep` is exempt from bats errexit and
+  # would assert nothing.
+  run grep -q "rapid failure" "$T/start.log"
+  [ "$status" -ne 0 ]
+  run grep -q "failure-status server" "$T/start.log"
+  [ "$status" -ne 0 ]
 }
 
 @test "10 consecutive sub-5s exit-75 runs log a possible-loop WARNING" {
@@ -120,8 +148,10 @@ wait_for_log() { # pattern timeout_halfsecs
   grep -q "rapid failure 4/5" "$T/start.log"
   grep -q "threshold reached" "$T/start.log"
   grep -q "\[stub-failure-server\] up FAILURE_EPOCH=" "$T/start.log"
-  # env anchor was non-empty when the server ran
-  ! grep -q "up FAILURE_EPOCH=$" "$T/start.log"
+  # env anchor was non-empty when the server ran (run + status: a bare
+  # non-final `! grep` is exempt from bats errexit and would assert nothing)
+  run grep -q "up FAILURE_EPOCH=$" "$T/start.log"
+  [ "$status" -ne 0 ]
   grep -q "failure server exited" "$T/start.log"
 }
 
@@ -164,13 +194,7 @@ wait_for_log() { # pattern timeout_halfsecs
 
 @test "orphan sweep TERMs stragglers matching ORPHAN_SWEEP_PATTERN" {
   # Dedicated stub: first run spawns a tagged orphan, then exits 1.
-  cat >"$T/orphan-helper.sh" <<EOF
-#!/bin/bash
-# argv carries the tag via this file's path
-sleep 300
-EOF
-  chmod +x "$T/orphan-helper.sh"
-  mv "$T/orphan-helper.sh" "$T/$TAG-orphan.sh"
+  make_tagged_sleeper "$TAG-orphan.sh"
   cat >"$T/stub-alphaclaw" <<STUB
 #!/bin/bash
 n=\$(cat "\$STUB_DIR/count" 2>/dev/null || echo 0); n=\$((n+1)); echo "\$n" >"\$STUB_DIR/count"
@@ -178,7 +202,9 @@ if [ "\$n" -eq 1 ]; then
   nohup bash "$T/$TAG-orphan.sh" >/dev/null 2>&1 &
   exit 1
 fi
-sleep 300
+sleep 300 &
+trap 'kill "\$!" 2>/dev/null; exit 143' TERM INT
+wait "\$!"
 STUB
   chmod +x "$T/stub-alphaclaw"
   printf '' >"$T/scenario"
@@ -186,6 +212,49 @@ STUB
   wait_for_log "orphan sweep complete" 20
   sleep 0.5
   ! pgrep -f "$TAG-orphan.sh" >/dev/null
+}
+
+@test "tmux-hosted rescue sessions survive an exit-75 restart and the orphan sweep" {
+  # Two-tag design: a sweep-tagged decoy MUST die (proves the sweep actually
+  # ran) while the tmux session — whose argv matches neither $TAG nor the
+  # production default pattern — MUST survive the supervisor's exit-75
+  # relaunch path with the SAME pane payload. This is the property alphaclaw's
+  # rescue sessions depend on; re-adoption itself is alphaclaw behavior,
+  # verified post-deploy, not here.
+  command -v tmux >/dev/null || skip "tmux not installed on host"
+  SOCK="$T/rescue.sock"
+  make_tagged_sleeper "$TAG-decoy.sh"
+  cat >"$T/stub-alphaclaw" <<STUB
+#!/bin/bash
+n=\$(cat "\$STUB_DIR/count" 2>/dev/null || echo 0); n=\$((n+1)); echo "\$n" >"\$STUB_DIR/count"
+if [ "\$n" -eq 1 ]; then
+  nohup bash "$T/$TAG-decoy.sh" >/dev/null 2>&1 &
+  # tmux daemonizes: detach it from bats' fds or the file hangs on fd3/stdout.
+  tmux -S "$SOCK" new-session -d -s alphaclaw-rescue 'exec sleep 300' </dev/null >/dev/null 2>&1 3>&-
+  tmux -S "$SOCK" list-panes -t alphaclaw-rescue -F '#{pane_pid}' >"\$STUB_DIR/pane-pid"
+  exit 75
+fi
+sleep 300 &
+trap 'kill "\$!" 2>/dev/null; exit 143' TERM INT
+wait "\$!"
+STUB
+  chmod +x "$T/stub-alphaclaw"
+  printf '' >"$T/scenario"
+  run_supervisor
+  wait_for_count 2 20
+  wait_for_log "orphan sweep complete" 20
+  sleep 0.5
+  # the sweep-tagged decoy died... (run + status: a bare non-final `! pgrep`
+  # is exempt from bats errexit and would assert nothing)
+  run pgrep -f "$TAG-decoy.sh"
+  [ "$status" -ne 0 ]
+  # ...but the tmux session survived, hosting the same pane process
+  tmux -S "$SOCK" has-session -t alphaclaw-rescue
+  pane_before=$(cat "$T/pane-pid")
+  pane_after=$(tmux -S "$SOCK" list-panes -t alphaclaw-rescue -F '#{pane_pid}')
+  [ -n "$pane_before" ]
+  [ "$pane_before" = "$pane_after" ]
+  kill -0 "$pane_after"
 }
 
 @test "invalid numeric env values fall back to defaults with a WARNING" {
