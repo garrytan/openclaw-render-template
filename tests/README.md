@@ -7,7 +7,7 @@ run. All test files live here and are excluded from the image via `.dockerignore
 | Layer        | What it checks                                                                 | Needs            | Command               |
 |--------------|--------------------------------------------------------------------------------|------------------|-----------------------|
 | **unit**     | `failure-server.js` routing + the "no secret leaks" property                   | node             | `npm run test:unit`   |
-| **contract** | Static invariants in `start.sh` / `debug-start.sh` / `Dockerfile` / `render.yaml` (the "don't remove" items in `CLAUDE.md`) **plus the supervise harness** — the real `start.sh` run on the host with a stub alphaclaw | bash, `shellcheck`, `bats`, node | `npm run test:contract` |
+| **contract** | Static invariants in `start.sh` / `debug-start.sh` / `Dockerfile` / `render.yaml` / `package.json` / `.github/workflows/test.yml` (the "don't remove" items in `CLAUDE.md`) **plus the supervise harness** — the real `start.sh` run on the host with a stub alphaclaw | bash, `shellcheck`, `bats`, node | `npm run test:contract` |
 | **e2e**      | Builds the image, runs it with an empty `/data` (like Render's disk), asserts it stays Live and every documented invariant holds at runtime | docker, `bats`, curl | `npm run test:e2e`    |
 
 ```sh
