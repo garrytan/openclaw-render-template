@@ -23,15 +23,27 @@ npm run test:all  # everything
   never appear in any HTTP response — the regression guard for "don't leak
   `/data/start.log` on the public failure page."
 - **Contract** locks in the load-bearing config that, if removed, restart-loops
-  the container: the `PATH` prepend (alphaclaw spawns `openclaw` by bare name),
-  the `TMPDIR=/data/tmp` routing, the sticky-bit `mkdir` on boot, the tini/CMD
-  wiring, and the "never touch bare `/tmp`" rule.
+  the container or silently degrades it: the `PATH` prepend (alphaclaw spawns
+  `openclaw` by bare name), the `TMPDIR=/data/tmp` routing, the sticky-bit
+  `mkdir` on boot, the tini/CMD wiring, `tmux` in the apt line (alphaclaw's
+  rescue-session hosting probes `tmux -V`; without it sessions degrade to
+  script(1) and die with each alphaclaw restart), `tmux` in the CI workflow's
+  apt line (the survival test skips without it, and bats reports skips as
+  green — CI must never go green unproven), the default
+  `ORPHAN_SWEEP_PATTERN` never matching tmux/rescue argv (including pane argv
+  that merely mentions the gateway) while still matching real gateway argv,
+  the exact `@anthropic-ai/claude-code` version pin, and the "never touch
+  bare `/tmp`" rule.
 - **Contract's supervise harness** (`supervise.bats`) drives the real `start.sh`
   through its env knobs with a scenario-driven stub alphaclaw and a stub
   failure server: exit-75 immediate relaunch (+ spin brake and loop WARNING),
   the >window reset heuristic, backoff + the 5-failure threshold, cumulative
   backoff cap, `FAILURE_EPOCH` persistence/clearing, log rotation, the orphan
-  sweep (via a tagged pattern so it can never touch real host processes), and
+  sweep (via a tagged pattern so it can never touch real host processes),
+  tmux rescue-session survival — a two-tag test where a sweep-tagged decoy
+  dies while a detached tmux session on its own socket survives the exit-75
+  relaunch with the same pane PID (skips if the host lacks tmux; CI installs
+  it explicitly so the property is always proven there) — and
   numeric env validation. `tests/unit/failure-server-restart.test.mjs` covers
   the failure server's escape hatches: `POST /restart` exit (+ 429 dedupe,
   client-abort), the health-grace 200→503 flip, epoch anchoring, and
@@ -62,7 +74,7 @@ npm run test:all  # everything
 ## Local prerequisites
 
 ```sh
-brew install bats-core shellcheck   # macOS
+brew install bats-core shellcheck tmux   # macOS
 ```
 
 Node's built-in test runner (`node --test`) needs no extra packages.
