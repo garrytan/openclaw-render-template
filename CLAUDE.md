@@ -15,6 +15,7 @@ This is a Docker-based one-click Render deploy of [`alphaclaw`](https://github.c
 - `failure-server.js` — public failure-status page with a `POST /restart` escape hatch and a health-grace flip (see "Boot supervisor").
 - `debug-start.sh` — diagnostic boot script (see "Debug path" below).
 - `VERSION` + `CHANGELOG.md` — template release metadata; every alphaclaw pin bump gets a VERSION bump and a CHANGELOG entry.
+- `TODOS.md` — deferred-work ledger (mostly items surfaced by ship reviews, with effort/priority and the context to pick them up cold); when a ship completes one, move it to the Completed section with the shipping version.
 
 ## Critical PATH detail (don't remove)
 
