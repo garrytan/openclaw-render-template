@@ -178,6 +178,68 @@ Internet → Render :3000 (Express)
 - **Restart**: Click "Restart" in the General tab — runs `openclaw gateway install --force` then `openclaw gateway restart`
 - **Channel sync**: Adding/removing channel tokens in the Envars tab automatically runs `openclaw channels add/remove`
 
+## Baked-in tools
+
+The image ships a fixed set of operator/agent tools so they survive redeploys instead of being hand-installed into the ephemeral container layer. Every pin lives in `baked-tools.env` at the repo root and is verified at build time.
+
+| Tool                                                                     | Version         | Source                                                       | Verification                        | Path                                                              | License      |
+| ------------------------------------------------------------------------ | --------------- | ------------------------------------------------------------ | ----------------------------------- | ----------------------------------------------------------------- | ------------ |
+| Caddy                                                                    | 2.11.4          | GitHub release tarball                                       | SHA-512 from upstream `checksums.txt` | `/usr/local/bin/caddy`                                            | Apache-2.0   |
+| Tailscale (`tailscale`, `tailscaled`)                                    | 1.102.3         | pkgs.tailscale.com static tgz                                | SHA-256 sidecar                     | `/usr/local/bin/{tailscale,tailscaled}`                           | BSD-3-Clause |
+| Bun (`bun`, `bunx`)                                                      | 1.4.2           | GitHub release zip                                           | SHA-256 from `SHASUMS256.txt`       | `/usr/local/bin/{bun,bunx}`                                       | MIT          |
+| monolith                                                                 | 2.10.1          | built from git rev `47affd5f…` with `cargo install --locked` | commit + `Cargo.lock`               | `/usr/local/bin/monolith`                                         | CC0-1.0      |
+| PostgreSQL client                                                        | 17              | PGDG signed apt repo                                         | apt signature + key fingerprint     | `/usr/lib/postgresql/17/bin` (+ `/usr/bin` via `pg_wrapper`)      | PostgreSQL   |
+| git-lfs, jq, openssl, ca-certificates, flock (util-linux), fuser (psmisc) | Debian bookworm | Debian bookworm apt                                          | apt signatures                      | `/usr/bin`, `/bin`                                                | see Debian   |
+
+**Nothing is auto-started.** Installing a tool does not enable it: the image launches no `tailscaled`, no `caddy`, opens no extra port and adds no cron job. A fresh deploy reaches the setup UI with no Tailscale or Caddy configuration. Gateway lifecycle stays with AlphaClaw.
+
+### Optional, manual use
+
+These are things an operator *may* run by hand from the Render **Shell** tab. None of them is wired into boot; keep any state on the persistent disk (`/data`) or it is gone after the next redeploy.
+
+- **Tailscale** — Render containers have no TUN device or `CAP_NET_ADMIN`, so userspace networking mode is required, and the state file must live under `/data` or you re-authenticate after every redeploy:
+
+  ```sh
+  mkdir -p /data/tailscale
+  tailscaled --tun=userspace-networking \
+    --state=/data/tailscale/tailscaled.state \
+    --socket=/data/tailscale/tailscaled.sock
+  ```
+
+- **Caddy** — keep configs under `/data`, e.g. `caddy validate --config /data/Caddyfile`.
+- **Bun** — `bun install -g` lands in the ephemeral `/root/.bun` unless `BUN_INSTALL` points under `/data` (e.g. `BUN_INSTALL=/data/.bun`).
+- **PostgreSQL client** — `psql`, `pg_dump`, `pg_restore` for an external database; there is no server in the image.
+
+### git-lfs note
+
+The LFS filter is installed system-wide at build time (`git lfs install --system`). It activates for any repo whose `.gitattributes` uses `filter=lfs` — including repos you clone by hand — and smudging then needs network access and credentials for that repo's LFS endpoint. If you do not want a checkout to download large objects, opt out per repo by running `git lfs install --local --skip-smudge` inside that repo (this writes the repo's own `.git/config`, so it persists with the repo under `/data`; without `--local` the override lands in `~/.gitconfig`, which lives in the ephemeral `/root` and vanishes on redeploy). For a one-off clone use `GIT_LFS_SKIP_SMUDGE=1 git clone …`, then `git lfs pull` when you actually want the objects.
+
+### Exact pins (SBOM-lite)
+
+```sh
+cat /etc/baked-tools.env
+```
+
+lists every pinned version, checksum, `MONOLITH_REV` and `PG_MAJOR` the running image was built from. `/etc/baked-tools.env` is part of the image, not `/data`, which is why it does not appear in the file layout above.
+
+### Maintenance policy
+
+- Tool CVEs are handled by bumping the pin; nothing auto-updates inside the image.
+- Review the pins at each alphaclaw minor bump, or quarterly, whichever comes first.
+- Soft budgets: image size at most +300 MB over the 2.0.0.2 image; cold build at most +8 minutes.
+
+### Bumping a pin
+
+1. Edit `baked-tools.env` (the version and its matching checksums; for monolith, `MONOLITH_VERSION` + `MONOLITH_REV`).
+2. Run `npm test` and `npm run test:e2e`.
+3. Record the bump in `CHANGELOG.md` + `VERSION`.
+
+### Rollback
+
+- Render dashboard → **Deploys** → **Rollback** to the previous deploy. Render redeploys the retained prior image; nothing is rebuilt.
+- Or `git revert` the merge commit and redeploy. This rebuilds from the same pinned inputs, but the floating bases (the Node/Debian image and the PostgreSQL minor inside the signed repo) may differ from the original build.
+- Either way the image never touches `/data`; there is no data migration to undo.
+
 ## Troubleshooting
 
 ### Pairing

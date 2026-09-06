@@ -1,11 +1,10 @@
-node_modules/
-data/
-.git/
-.env
-.DS_Store
-tests/
-.github/
-coverage/
-.cursor/
-agent-tools/
-*.log
+# Allowlist: only the files the Dockerfile COPYs may enter the build context.
+# Adding a COPY of a new repo file means adding a matching `!` line here (a
+# missing entry fails the build loudly). Everything else — .env files, keys,
+# dumps, tests/, .git/, node_modules/, agent state, docs — is excluded by `*`.
+*
+!package.json
+!start.sh
+!failure-server.js
+!baked-tools.env
+!debug-start.sh

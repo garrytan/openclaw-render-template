@@ -149,25 +149,36 @@ teardown_file() {
 }
 
 @test "onboarded: logs contain no invalid-config or plugin-path failures" {
-  run docker logs "$C_ONB"
-  ! grep -qF "OpenClaw config is invalid" <<<"$output"
-  ! grep -qiF "plugin path not found" <<<"$output"
-  ! grep -qF "Gateway failed to start" <<<"$output"
+  # Enforcing form: a bare non-final `! grep` is exempt from bats errexit and
+  # asserts nothing. Capture the logs into a named variable first — a nested
+  # `run grep` would clobber $output from a prior `run docker logs`.
+  LOGS=$(docker logs "$C_ONB" 2>&1)
+  run grep -qF "OpenClaw config is invalid" <<<"$LOGS"
+  [ "$status" -ne 0 ]
+  run grep -qiF "plugin path not found" <<<"$LOGS"
+  [ "$status" -ne 0 ]
+  run grep -qF "Gateway failed to start" <<<"$LOGS"
+  [ "$status" -ne 0 ]
 }
 
 @test "onboarded: boot pruned the stale @chrysb usage-tracker path" {
   run docker exec "$C_ONB" cat /data/.openclaw/openclaw.json
   [ "$status" -eq 0 ]
   echo "config: $output" >&2
-  ! grep -qF "$STALE_PATH" <<<"$output"
-  grep -qF "$CANONICAL_PATH" <<<"$output"
+  CFG="$output"
+  run grep -qF "$STALE_PATH" <<<"$CFG"
+  [ "$status" -ne 0 ]
+  grep -qF "$CANONICAL_PATH" <<<"$CFG"
 }
 
 @test "onboarded: openclaw config validate accepts the migrated config" {
   run docker exec "$C_ONB" sh -c "openclaw config validate 2>&1 || true"
   echo "validate: $output" >&2
-  ! grep -qF "$STALE_PATH" <<<"$output"
-  ! grep -qiF "plugin path not found" <<<"$output"
+  VALIDATE="$output"
+  run grep -qF "$STALE_PATH" <<<"$VALIDATE"
+  [ "$status" -ne 0 ]
+  run grep -qiF "plugin path not found" <<<"$VALIDATE"
+  [ "$status" -ne 0 ]
 }
 
 # --- NOT onboarded: prune must still run (the field regression) --------------
@@ -181,15 +192,20 @@ teardown_file() {
   run docker exec "$C_NOO" cat /data/.openclaw/openclaw.json
   [ "$status" -eq 0 ]
   echo "config: $output" >&2
-  ! grep -qF "$STALE_PATH" <<<"$output"
-  grep -qF "$CANONICAL_PATH" <<<"$output"
+  CFG="$output"
+  run grep -qF "$STALE_PATH" <<<"$CFG"
+  [ "$status" -ne 0 ]
+  grep -qF "$CANONICAL_PATH" <<<"$CFG"
 }
 
 @test "not-onboarded: openclaw config validate accepts the migrated config" {
   run docker exec "$C_NOO" sh -c "openclaw config validate 2>&1 || true"
   echo "validate: $output" >&2
-  ! grep -qF "$STALE_PATH" <<<"$output"
-  ! grep -qiF "plugin path not found" <<<"$output"
+  VALIDATE="$output"
+  run grep -qF "$STALE_PATH" <<<"$VALIDATE"
+  [ "$status" -ne 0 ]
+  run grep -qiF "plugin path not found" <<<"$VALIDATE"
+  [ "$status" -ne 0 ]
 }
 
 # Keep this LAST: it stops the onboarded container — the one with a LIVE
