@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.3] - 2026-09-06
+
+### Added
+- Baked a fixed toolset into the image so operators and the agent no longer hand-install it into the ephemeral container layer after every deploy: Caddy 2.11.4 (GitHub release tarball, SHA-512 verified against the upstream `checksums.txt`), Tailscale 1.102.3 `tailscale` + `tailscaled` (pkgs.tailscale.com static tarball, SHA-256 verified against the `.sha256` sidecar), Bun 1.4.2 `bun` + `bunx` (GitHub release zip, SHA-256 verified against `SHASUMS256.txt`), monolith 2.10.1 built from source at git rev `47affd5f9070eb01a94045ce31923e577f9a9162` with `cargo install --locked` in a digest-pinned `rust:1.98.0-slim-bookworm` stage (the upstream aarch64 prebuilt links `libssl1.1`, which bookworm lacks), PostgreSQL client 17 (`psql`, `pg_dump`, `pg_restore` from the signed PGDG apt repo, key verified by fingerprint `B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8`; installs to `/usr/lib/postgresql/17/bin` with the Debian `pg_wrapper` layout; no server package), `git-lfs`, `jq`, plus the support packages `ca-certificates`, `openssl`, `util-linux` (`flock`) and `psmisc` (`fuser`). Nothing is started: the image launches no `tailscaled` or `caddy`, opens no new port, and a fresh deploy reaches the setup UI exactly as before.
+- New `baked-tools.env` pin manifest at the repo root — the single source of versions, checksums, `MONOLITH_REV` and `PG_MAJOR` for every build stage, shipped verbatim in the image at `/etc/baked-tools.env` so a live box can `cat` its exact pins.
+- New tests. `tests/contract/tools.bats` (runs in `npm test`) statically locks in the manifest format and that every pin is referenced, the `pins`/`tools`/`monolith-build` stages and the load-bearing layer order, the no-`ARG` rule, downloads == checksum checks, the PGDG fingerprint/`signed-by`/client-only/purge-`gpg` discipline, a no-daemon guard over the Dockerfile and `start.sh` (with positive and negative controls), the `EXPOSE`/`CMD`/`COPY`-source surface, the `.dockerignore` allowlist, CI `timeout-minutes`, and `AGENTS.md == CLAUDE.md`. `tests/e2e/tools.bats` (runs in `npm run test:e2e`) checks every baked binary offline with `docker run --network none` (version == pin, `ldd` shared-library resolution, arch consistency, PATH/shim precedence), proves the checksum gate fails the build on a mutated manifest, boots the image credential-free and asserts `/health` 200 with no `tailscaled`/`caddy`/`monolith` process and no tool port listening, boots against a reused `/data` volume, asserts prompt shutdown, and exercises the tools functionally (a `git lfs` commit lands an object in `.git/lfs/objects`, `caddy validate`, `jq`, `openssl`, `flock`).
+
+### Changed
+- `.dockerignore` is now an allowlist: `*` followed by a `!` line for each Dockerfile `COPY` source (plus `debug-start.sh` for the documented debug detour). Nothing unlisted can enter the build context, and a future `COPY` of an unlisted file fails the build loudly (contract-tested against the Dockerfile's actual `COPY` sources).
+- The new apt/PGDG layer sits directly below the original apt line and above both npm layers, so alphaclaw pin bumps never re-fetch apt indexes or move the PostgreSQL minor; the pinned claude-code install and the app `npm install` are unchanged.
+- `git lfs install --system` runs at build time: the LFS filter lives in `/etc/gitconfig` and is inert for any repo whose `.gitattributes` has no `filter=lfs` entries (alphaclaw's workspace repo has none).
+- CI jobs gained `timeout-minutes` (20 for unit + contract, 60 for docker e2e) so a stalled download or build is bounded instead of running to GitHub's cap.
+- Converted the latent no-op bare `!` assertions in `tests/e2e/stale-config.bats` and `tests/e2e/supervise-e2e.bats` to enforcing `run` + status checks, capturing `docker logs`/`docker exec` output into a variable first so the nested `run grep` cannot clobber `$output` (closes the `TODOS.md` P1 item ledgered in 2.0.0.2).
+- Image size grows by about 236 MB: 1,375,861,315 → 1,611,978,214 bytes (+17%), measured on linux/amd64 with Docker 25 — inside the +300 MB soft budget over the 2.0.0.2 image (see the README's maintenance policy).
+- Updated the bundled alphaclaw from 0.9.56 to 0.9.76 (pin 3f9b27b → 01d3b66), which landed on main as six pin-bump commits after 2.0.0.2 (0.9.66, 0.9.67, 0.9.68, 0.9.69, 0.9.75, 0.9.76); OpenClaw moves to the 2026.9.2 stable line. This release was built and e2e-tested against 01d3b66.
+
+### Security
+- Pins live in a plain file (`baked-tools.env`), never Dockerfile `ARG`: Render turns every service env var into a `--build-arg`, so an `ARG` default would be a dashboard-overridable pin.
+- Every download is checksum-verified before it is unpacked (`sha512sum -c` / `sha256sum -c`, always as the last pipeline stage because dash has no `pipefail`), and every apt source is signed — the PGDG key must contain exactly one primary key with the pinned fingerprint before apt ever sees it. Any upstream change fails the build by design and is bumped deliberately.
+- The image starts no daemon, opens no new port, adds no cron job, and requires no credentials to reach the setup UI; installing a tool does not enable it.
+- Build tooling (`unzip`, `gpg`, the Rust toolchain) never lands in the runtime image: downloads and the monolith compile happen in throwaway stages, and `gpg` is purged (`apt-get purge --auto-remove`) in the same `RUN` once the PGDG client package is installed, so it never reaches a committed layer.
+
 ## [2.0.0.2] - 2026-09-01
 
 ### Changed

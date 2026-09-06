@@ -123,10 +123,14 @@ teardown_file() {
 # --- exit-75 path ---------------------------------------------------------------
 
 @test "exit 75 relaunches immediately and never reaches the failure page" {
-  run docker logs "$C_75"
-  [ "$(grep -c 'intentional restart' <<<"$output")" -ge 3 ]
-  ! grep -q "threshold reached" <<<"$output"
-  ! grep -q "rapid failure" <<<"$output"
+  LOGS=$(docker logs "$C_75" 2>&1)
+  [ "$(grep -c 'intentional restart' <<<"$LOGS")" -ge 3 ]
+  # run + status: a bare non-final `! grep` is exempt from bats errexit and
+  # would assert nothing.
+  run grep -q "threshold reached" <<<"$LOGS"
+  [ "$status" -ne 0 ]
+  run grep -q "rapid failure" <<<"$LOGS"
+  [ "$status" -ne 0 ]
   RUNNING=$(docker inspect -f '{{.State.Running}}' "$C_75")
   [ "$RUNNING" = "true" ]
 }
