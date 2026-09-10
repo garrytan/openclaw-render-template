@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.7] - 2026-09-10
+
+### Changed
+- Updated the bundled alphaclaw from 0.9.82 to 0.9.83: the OpenClaw Control UI is now served at `/openclaw` for real — a basePath mount, a verbatim proxy, and no more "Styles failed to load". No runtime changes for the template: the Node `>=24.16.0 <25 || >=26.1.0` gate, the exact OpenClaw 2026.9.3 pin and the `node:24-slim` base are unchanged.
+
 ## [2.0.0.6] - 2026-09-09
 
 ### Changed
