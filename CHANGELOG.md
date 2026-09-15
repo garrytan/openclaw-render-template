@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.9] - 2026-09-15
+
+### Changed
+- Updated the bundled alphaclaw from 0.9.84 to 0.9.85: intent and recovery are preserved across the reliability flows — managed update attempts, watchdog crash recovery, update repair, Gmail watch lifecycle and Google disconnect are now explicit, ledgered operations. No runtime changes for the template: the Node `>=24.16.0 <25 || >=26.1.0` gate, the exact OpenClaw 2026.9.3 pin and the `node:24-slim` base are unchanged.
+
 ## [2.0.0.8] - 2026-09-14
 
 ### Changed
