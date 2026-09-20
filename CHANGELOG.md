@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.10] - 2026-09-20
+
+### Changed
+- Updated the bundled alphaclaw from 0.9.85 to 0.9.86: backups stay reliable around oversized scratch directories — a backup policy with inventory, retention, verification and fallback, editable from the Upgrade tab. No runtime changes for the template: the Node `>=24.16.0 <25 || >=26.1.0` gate, the exact OpenClaw 2026.9.3 pin and the `node:24-slim` base are unchanged.
+
 ## [2.0.0.9] - 2026-09-15
 
 ### Changed
