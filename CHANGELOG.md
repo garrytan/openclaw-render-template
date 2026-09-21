@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.11] - 2026-09-21
+
+### Changed
+- Updated the bundled alphaclaw from 0.9.86 to 0.9.87: backups are preflighted before an upgrade takes the gateway down, with a preflight card in the Upgrade tab. No runtime changes for the template: the Node `>=24.16.0 <25 || >=26.1.0` gate, the exact OpenClaw 2026.9.3 pin and the `node:24-slim` base are unchanged.
+
 ## [2.0.0.10] - 2026-09-20
 
 ### Changed
