@@ -137,3 +137,4 @@ After touching `start.sh`, `Dockerfile`, `baked-tools.env`, `.dockerignore`, `re
 - Don't hardcode the PostgreSQL major — use `${PG_MAJOR}` from `baked-tools.env` in package names, paths, and smokes.
 - Don't add files to the build context without a `!` line in `.dockerignore` — it's an allowlist; an unlisted `COPY` source fails the build.
 - Don't force-push or amend on `main` after a debug detour. Add a new commit on top.
+- Don't mount `/data` from a macOS host directory in the e2e suites — use a Docker named volume (or tmpfs) and seed it from a helper container. Docker Desktop's file sharing breaks SQLite's cross-process locks, and OpenClaw ≥ 2026.9.5 turns a failed state-snapshot cleanup under `/data/.cache/openclaw` into a fatal gateway exit 78 that Render (ext4) never produces. `stale-config.bats` documents the mechanism.

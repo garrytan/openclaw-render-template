@@ -26,28 +26,45 @@
 #     unconditional reconcile in bin/alphaclaw.js must still prune the path
 #     (this is the variant that regressed in the field).
 #
+# /data is a Docker NAMED VOLUME, never a host bind mount. Render's disk is an
+# ext4 block device; a named volume is ext4 inside the Docker VM too, but a
+# macOS host directory arrives over Docker Desktop's file sharing (virtiofs /
+# gRPC-FUSE), where SQLite's POSIX advisory locks are unreliable across
+# processes. OpenClaw >= 2026.9.5 copies its state database into
+# $HOME/.cache/openclaw (= /data/.cache/openclaw) for shared-state discovery
+# and treats a failed cleanup of that snapshot as fatal (gateway exits 78,
+# EX_CONFIG). With alphaclaw reading the same database concurrently, that
+# cleanup fails with ERR_SQLITE_ERROR on a bind mount and the gateway never
+# reaches ready — while the identical image on a named volume (or on Render)
+# boots fine. A bind mount here would fail this suite for a reason Render can
+# never hit, so the seed is written INTO the volume by a helper container.
+#
 # Slow (builds an image, boots two containers). Run via `npm run test:e2e`.
 # Skips cleanly when docker is unavailable.
 
 IMAGE="openclaw-render-test:latest"
 C_ONB="openclaw-render-stale-onboarded-e2e"
 C_NOO="openclaw-render-stale-not-onboarded-e2e"
+V_ONB="openclaw-render-stale-onboarded-e2e-data"
+V_NOO="openclaw-render-stale-not-onboarded-e2e-data"
 PORT_ONB=13001
 PORT_NOO=13002
 STALE_PATH="/app/node_modules/@chrysb/alphaclaw/lib/plugin/usage-tracker"
 CANONICAL_PATH="/app/node_modules/alphaclaw/lib/plugin/usage-tracker"
 GATEWAY_READY_MARKER="[gateway] ready"
 
-_seed_data_dir() {
-  # $1 = dir, $2 = "onboarded" | "not-onboarded"
-  local dir="$1"
-  mkdir -p "$dir/.openclaw"
-  if [ "$2" = "onboarded" ]; then
-    printf '{"onboarded":true}\n' >"$dir/onboarded.json"
-    # Realistic onboarded config: gateway.mode=local is what `openclaw onboard
-    # --mode local` writes; without it the gateway refuses to start for an
-    # unrelated reason and the test would prove nothing about the plugin path.
-    cat >"$dir/.openclaw/openclaw.json" <<JSON
+_seed_volume() {
+  # $1 = volume name, $2 = "onboarded" | "not-onboarded". Writes the seed INTO
+  # a fresh named volume using the image under test as the helper (no extra
+  # image pull; sh/printf are all it needs). See the header for why not -v dir.
+  local vol="$1"
+  docker volume rm -f "$vol" >/dev/null 2>&1 || true
+  docker volume create "$vol" >/dev/null
+  # Realistic onboarded config: gateway.mode=local is what `openclaw onboard
+  # --mode local` writes; without it the gateway refuses to start for an
+  # unrelated reason and the test would prove nothing about the plugin path.
+  local cfg
+  cfg=$(cat <<JSON
 {
   "gateway": { "mode": "local" },
   "plugins": {
@@ -57,21 +74,20 @@ _seed_data_dir() {
   }
 }
 JSON
+)
+  if [ "$2" = "onboarded" ]; then
+    docker run --rm -v "$vol:/data" --entrypoint sh "$IMAGE" -c \
+      'mkdir -p /data/.openclaw && printf "%s\n" "$1" >/data/onboarded.json && printf "%s\n" "$2" >/data/.openclaw/openclaw.json' \
+      _ '{"onboarded":true}' "$cfg" >&2
   else
-    cat >"$dir/.openclaw/openclaw.json" <<JSON
-{
-  "plugins": {
-    "allow": ["usage-tracker"],
-    "load": { "paths": ["$STALE_PATH"] },
-    "entries": { "usage-tracker": { "enabled": true } }
-  }
-}
-JSON
+    docker run --rm -v "$vol:/data" --entrypoint sh "$IMAGE" -c \
+      'mkdir -p /data/.openclaw && printf "%s\n" "$1" >/data/.openclaw/openclaw.json' \
+      _ "$cfg" >&2
   fi
 }
 
 _run_seeded() {
-  # $1 = container name, $2 = host port, $3 = seed dir
+  # $1 = container name, $2 = host port, $3 = seeded named volume
   docker rm -f "$1" >/dev/null 2>&1 || true
   docker run -d --name "$1" \
     -v "$3:/data" \
@@ -102,20 +118,18 @@ _wait_for_gateway_ready() {
 
 setup_file() {
   REPO="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-  export REPO IMAGE C_ONB C_NOO PORT_ONB PORT_NOO STALE_PATH CANONICAL_PATH GATEWAY_READY_MARKER
+  export REPO IMAGE C_ONB C_NOO V_ONB V_NOO PORT_ONB PORT_NOO STALE_PATH CANONICAL_PATH GATEWAY_READY_MARKER
 
   command -v docker >/dev/null || skip "docker not installed"
   docker info >/dev/null 2>&1 || skip "docker daemon not running"
 
   docker build -t "$IMAGE" "$REPO" >&2
 
-  SEED_ONB="$(mktemp -d)"; SEED_NOO="$(mktemp -d)"
-  export SEED_ONB SEED_NOO
-  _seed_data_dir "$SEED_ONB" onboarded
-  _seed_data_dir "$SEED_NOO" not-onboarded
+  _seed_volume "$V_ONB" onboarded
+  _seed_volume "$V_NOO" not-onboarded
 
-  _run_seeded "$C_ONB" "$PORT_ONB" "$SEED_ONB"
-  _run_seeded "$C_NOO" "$PORT_NOO" "$SEED_NOO"
+  _run_seeded "$C_ONB" "$PORT_ONB" "$V_ONB"
+  _run_seeded "$C_NOO" "$PORT_NOO" "$V_NOO"
 
   _wait_for_gateway_ready "$C_ONB"
   # The not-onboarded container never starts a gateway; give its boot reconcile
@@ -125,8 +139,7 @@ setup_file() {
 
 teardown_file() {
   docker rm -f "$C_ONB" "$C_NOO" >/dev/null 2>&1 || true
-  [ -n "$SEED_ONB" ] && rm -rf "$SEED_ONB" || true
-  [ -n "$SEED_NOO" ] && rm -rf "$SEED_NOO" || true
+  docker volume rm -f "$V_ONB" "$V_NOO" >/dev/null 2>&1 || true
 }
 
 # --- onboarded: OpenClaw must reach a working state --------------------------

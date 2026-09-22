@@ -77,6 +77,13 @@ npm run test:all  # everything
     not-onboarded `/data`, because the prune must run on every boot (in
     `bin/alphaclaw.js`), not only the onboarded boot sequence. Its final test
     stops the gateway-running container and asserts TERM teardown is prompt.
+    The seeded `/data` is a Docker **named volume** written by a helper
+    container, never a host bind mount: Render's disk is ext4 and so is a
+    named volume, but a macOS host directory comes through Docker Desktop's
+    file sharing, where SQLite's cross-process locks are unreliable. OpenClaw
+    >= 2026.9.5 snapshots its state database under `/data/.cache/openclaw`
+    and treats a failed snapshot cleanup as fatal (gateway exit 78), so on a
+    bind mount the gateway never reaches ready for a reason Render cannot hit.
   - `supervise-e2e.bats` proves the supervisor through the real container
     wiring: `ALPHACLAW_BIN=/bin/false` drives 5 rapid failures onto the
     failure page (Restart button present), `POST /restart` relaunches
