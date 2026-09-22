@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.12] - 2026-09-22
+
+### Changed
+- Updated the bundled alphaclaw from 0.9.87 to 0.9.88, which moves its exact OpenClaw pin from 2026.9.3 to 2026.9.5 and ships the three compatibility fixes the new OpenClaw needs (owner lease, schema versions, codex migration runtime). No runtime changes for the template: the Node `>=24.16.0 <25 || >=26.1.0` gate and the `node:24-slim` base are unchanged.
+
+### Fixed
+- `tests/e2e/stale-config.bats` now seeds `/data` into a Docker **named volume** (ext4, like Render's disk) instead of a macOS host bind mount. OpenClaw 2026.9.5 snapshots its state database under `/data/.cache/openclaw` for shared-state discovery and treats a failed snapshot cleanup as fatal (gateway exit 78); on Docker Desktop's file-shared bind mount that cleanup fails with `ERR_SQLITE_ERROR` (unreliable cross-process SQLite locks) while alphaclaw reads the same database, so the suite failed locally for a reason Render cannot hit. The identical image boots to `[gateway] ready` on a named volume, on a direct gateway run, and on Render's ext4 disk. `docker-compose.yml` already used a named volume, so local `npm run dev` was never affected.
+
 ## [2.0.0.11] - 2026-09-21
 
 ### Changed
