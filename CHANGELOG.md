@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.13] - 2026-09-23
+
+### Changed
+- Updated the bundled alphaclaw from 0.9.88 to 0.9.90, picking up two upstream releases: live-tier drift fixes on the OpenClaw 2026.9.5 pin (narrowed backup veto, upgrade round-trip gate, return-to-pin activation, vanished-entry backups, medic failure detail; 0.9.89) and the consolidated live-bug reliability wave (auth store, cron run store, medic admission, backup readiness/progress; 0.9.90). No runtime changes for the template: the Node `>=24.16.0 <25 || >=26.1.0` gate, the exact OpenClaw 2026.9.5 pin and the `node:24-slim` base are unchanged.
+
 ## [2.0.0.12] - 2026-09-22
 
 ### Changed
