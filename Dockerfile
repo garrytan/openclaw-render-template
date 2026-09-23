@@ -132,7 +132,7 @@ RUN set -eu; \
 # Pinned exactly, same discipline as the alphaclaw SHA pin: an unpinned
 # install floats to latest whenever an earlier layer changes, silently
 # shipping an unreviewed claude-code. Bump deliberately and record it.
-RUN npm install -g @anthropic-ai/claude-code@2.1.252 && npm cache clean --force
+RUN npm install -g @anthropic-ai/claude-code@2.1.281 && npm cache clean --force
 
 WORKDIR /app
 

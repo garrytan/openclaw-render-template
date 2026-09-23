@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.14] - 2026-09-23
+
+### Changed
+- Bumped the baked `@anthropic-ai/claude-code` pin from 2.1.252 to 2.1.281 (npm `latest` as of 2026-09-23). Rebuilds the pinned claude-code layer and the bounded app `npm install` below it; no other image change.
+
 ## [2.0.0.13] - 2026-09-23
 
 ### Changed
