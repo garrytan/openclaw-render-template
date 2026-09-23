@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.15] - 2026-09-23
+
+### Changed
+- Updated the bundled alphaclaw from 0.9.90 to 0.9.92: the gateway's boot startup is tracked and automatic lease recovery preserved (0.9.91), and OpenClaw's state-path identity is preserved on symlinked installs such as this image's `/root/.openclaw -> /data/.openclaw` (0.9.92). No runtime changes for the template: the Node `>=24.16.0 <25 || >=26.1.0` gate, the exact OpenClaw 2026.9.5 pin and the `node:24-slim` base are unchanged.
+
 ## [2.0.0.14] - 2026-09-23
 
 ### Changed
