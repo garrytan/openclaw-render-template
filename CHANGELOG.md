@@ -4,10 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [2.0.0.15] - 2026-09-23
+## [2.0.0.XX] - 2026-XX-XX
 
 ### Added
 - Baked the official GitHub CLI (`gh`) 2.99.0 into the image through the standard baked-tools pipeline: version + per-arch SHA-256 pins in `baked-tools.env` (verified against the upstream `gh_2.99.0_checksums.txt`), checksum-verified download in the `tools` stage, a `--version` smoke against the shipped manifest, and `GH_CONFIG_DIR=/data/.openclaw/gh` so auth/config state survives redeploys on the persistent disk. OpenClaw's GitHub integration fails without `gh` on the Gateway host's PATH; no token is baked into the image.
+
+## [2.0.0.15] - 2026-09-23
+
+### Changed
+- Updated the bundled alphaclaw from 0.9.90 to 0.9.92: the gateway's boot startup is tracked and automatic lease recovery preserved (0.9.91), and OpenClaw's state-path identity is preserved on symlinked installs such as this image's `/root/.openclaw -> /data/.openclaw` (0.9.92). No runtime changes for the template: the Node `>=24.16.0 <25 || >=26.1.0` gate, the exact OpenClaw 2026.9.5 pin and the `node:24-slim` base are unchanged.
 
 ## [2.0.0.14] - 2026-09-23
 
