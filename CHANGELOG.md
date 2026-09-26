@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [2.0.0.16] - 2026-09-26
 
 ### Changed
-- Updated the bundled alphaclaw from 0.9.92 to 0.9.93 (`8f482cf437ae0a088b6f082049ff2ddb402eefcf`): config-first upgrade recovery, explicit database migration protection, selective offline recovery, and fixes for dev preparation isolation and recovery lifecycle ownership. No runtime changes for the template: the Node `>=24.16.0 <25 || >=26.1.0` gate, the exact OpenClaw 2026.9.5 pin and the `node:24-slim` base are unchanged.
+- Updated the bundled alphaclaw from 0.9.92 to 0.9.94 (`2ce650c658611d135966f29b15770802db93d6dc`): config-first upgrade recovery, explicit database migration protection, selective offline recovery, and fixes for dev preparation isolation and recovery lifecycle ownership. Includes guarded pre-onboarding config normalization, restoring stale usage-tracker plugin-path cleanup without bypassing recovery admission. No runtime changes for the template: the Node `>=24.16.0 <25 || >=26.1.0` gate, the exact OpenClaw 2026.9.5 pin and the `node:24-slim` base are unchanged.
 
 ## [2.0.0.15] - 2026-09-23
 
