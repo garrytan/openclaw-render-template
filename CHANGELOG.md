@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.18] - 2026-10-03
+
+### Changed
+- Updated the bundled alphaclaw from 0.9.95 to 0.9.99 (`c3c416764da2bc8f2d93fe74d5a978b7454d1456`), which moves its exact OpenClaw pin from 2026.9.5 to 2026.9.8. 0.9.98 carries the compatibility fixes the new pin needs (state schema 19 / agent schema 24 in the recovery probe and auth store, the quarantine registry no longer holding boot, owner-lease classification on the new log format, re-hashed transient SQLite producers). 0.9.99 removes the in-app Upgrade tab, release channels and alphaclaw's own backup/rollback layer, so the pin in code is now the only OpenClaw version control. It adds a "Back up now" card (OpenClaw's `openclaw backup create --verify`) and runs `openclaw doctor --fix` once on the first boot of each new pin. Upstream notes that 2026.9.6+ database formats cannot be opened by older builds, so going back to 2026.9.5 means restoring a pre-upgrade backup, not redeploying the old pin. No runtime changes for the template: the Node `>=24.16.0 <25 || >=26.1.0` gate and the `node:24-slim` base are unchanged.
+- README: OpenClaw upgrades now land only by bumping the alphaclaw pin; the setup UI's Upgrade tab no longer exists.
+
 ## [2.0.0.17] - 2026-09-27
 
 ### Changed
