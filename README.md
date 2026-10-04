@@ -61,7 +61,7 @@ Each field includes instructions and links for how to get the value. Optional fi
 
 > **Model catalog note:** Models are discovered at runtime via `openclaw models list --all --json`. This keeps the setup UI aligned with the OpenClaw version installed in your deployment.
 >
-> **Versioning note:** OpenClaw's version is pinned transitively by the `alphaclaw` commit SHA in `package.json` (see `CHANGELOG.md` for what each pin bump ships). New OpenClaw releases land by bumping that pin and redeploying, or from the setup UI's Upgrade tab on a running deploy — not automatically at build time.
+> **Versioning note:** OpenClaw's version is pinned transitively by the `alphaclaw` commit SHA in `package.json` (see `CHANGELOG.md` for what each pin bump ships). New OpenClaw releases land only by bumping that pin and redeploying — not automatically at build time, and not from the setup UI (alphaclaw 0.9.99 removed the Upgrade tab).
 >
 > **Codex OAuth note:** OpenClaw onboarding runs in non-interactive mode here. For OAuth-only Codex setups, the wrapper uses `--auth-choice skip` and then applies your selected `openai-codex/*` model after onboarding.
 
