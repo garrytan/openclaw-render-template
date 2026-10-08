@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Baked the official GitHub CLI (`gh`) 2.99.0 into the image through the standard baked-tools pipeline: version + per-arch SHA-256 pins in `baked-tools.env` (verified against the upstream `gh_2.99.0_checksums.txt`), checksum-verified download in the `tools` stage, a `--version` smoke against the shipped manifest, and `GH_CONFIG_DIR=/data/.openclaw/gh` so auth/config state survives redeploys on the persistent disk. OpenClaw's GitHub integration fails without `gh` on the Gateway host's PATH; no token is baked into the image.
 
+## [2.0.0.19] - 2026-10-07
+
+### Changed
+- Updated the bundled alphaclaw from 0.9.99 to 0.10.0 (`6bb457575ae2d647eab8f8156eb542b0858d063f`), which rebuilds the gateway restart. On OpenClaw 2026.9.8 every restart with agent work in flight failed the same way: OpenClaw drains a SIGTERMed gateway for up to ~315 s while the port stays open, alphaclaw waited 15 s, both `gateway stop --force` and `gateway --force` are refused on an alphaclaw box, and the managed child it signalled was the compile-cache launcher rather than the gateway. 0.10.0 replaces that with one stop ladder (ask OpenClaw to restart itself with `gateway restart --wait 30000ms`, then SIGTERM the gateway's process group for 10 s, then SIGKILL for 5 s), one `openclaw gateway run` launch spawned detached in its own process group, and one `/readyz` proof from the new child's tree; the card is one button and one server-timed progress line, and failures are one of `stop_refused | stop_failed | launch_failed | ready_timeout | aborted`. `OPENCLAW_NO_RESPAWN` is no longer pinned to `1` under the external supervisor, so the gateway's own restart exits 0 and alphaclaw relaunches it with a fresh environment. No runtime changes for the template: the exact OpenClaw 2026.9.8 pin, the Node `>=24.16.0 <25 || >=26.1.0` gate and the `node:24-slim` base are unchanged, and the supervisor's `exit 75` contract and the `openclaw gateway run` orphan-sweep pattern still match (the detached gateway's argv is unchanged).
+- README: the gateway Restart description now matches 0.10.0 (ask → SIGTERM → SIGKILL ladder, `/readyz` proof) instead of the long-gone `gateway install --force` + `gateway restart` sequence.
+
 ## [2.0.0.18] - 2026-10-03
 
 ### Changed
