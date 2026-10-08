@@ -175,7 +175,7 @@ Internet → Render :3000 (Express)
 ### Gateway management
 
 - **Status**: The setup UI checks if the gateway is listening on its port in real-time
-- **Restart**: Click "Restart" in the General tab — runs `openclaw gateway install --force` then `openclaw gateway restart`
+- **Restart**: Click "Restart" in the General tab — alphaclaw asks OpenClaw to restart itself (`openclaw gateway restart --wait 30000ms`, so the agent finishes its current turn), SIGTERMs then SIGKILLs the gateway if it will not stop, spawns a fresh `openclaw gateway run`, and reports Running only once the new gateway answers `/readyz`
 - **Channel sync**: Adding/removing channel tokens in the Envars tab automatically runs `openclaw channels add/remove`
 
 ## Baked-in tools
