@@ -8,7 +8,7 @@
 #  │ /monolith.env = MONOLITH_* lines     │  │ apt: ca-certificates curl unzip (build-only)      │
 #  │ /pg.env       = PG_MAJOR line        │  │ . baked-tools.env → arch case → dl() + sha*sum -c │
 #  │ (each file changes only when its own │  │  → /out/usr/local/bin/{caddy,tailscale,tailscaled,│
-#  │  pins change, so downstream caches   │  │     bun,bunx→bun} ; /out/etc/baked-tools.env       │
+#  │  pins change, so downstream caches   │  │     bun,bunx→bun,gh} ; /out/etc/baked-tools.env    │
 #  │  survive unrelated pin bumps)        │  └─────────────────────────┬─────────────────────────┘
 #  └──────┬─────────────────┬────────────┘                            │
 #         │ /monolith.env   │ /pg.env                                  │
@@ -56,8 +56,8 @@ RUN set -eu; \
     dl() { curl -fsSL --retry 5 --retry-all-errors --retry-max-time 180 --connect-timeout 20 -o "$2" "$1"; }; \
     arch="$(dpkg --print-architecture)"; \
     case "$arch" in \
-      amd64) caddy_sha="$CADDY_SHA512_AMD64"; ts_sha="$TAILSCALE_SHA256_AMD64"; bun_arch=x64;     bun_sha="$BUN_SHA256_X64" ;; \
-      arm64) caddy_sha="$CADDY_SHA512_ARM64"; ts_sha="$TAILSCALE_SHA256_ARM64"; bun_arch=aarch64; bun_sha="$BUN_SHA256_AARCH64" ;; \
+      amd64) caddy_sha="$CADDY_SHA512_AMD64"; ts_sha="$TAILSCALE_SHA256_AMD64"; bun_arch=x64;     bun_sha="$BUN_SHA256_X64";     gh_sha="$GH_SHA256_AMD64" ;; \
+      arm64) caddy_sha="$CADDY_SHA512_ARM64"; ts_sha="$TAILSCALE_SHA256_ARM64"; bun_arch=aarch64; bun_sha="$BUN_SHA256_AARCH64"; gh_sha="$GH_SHA256_ARM64" ;; \
       *) echo "unsupported architecture: $arch" >&2; exit 1 ;; \
     esac; \
     work="$(mktemp -d)"; cd "$work"; \
@@ -76,6 +76,10 @@ RUN set -eu; \
     unzip -q bun.zip; \
     install -m 0755 "bun-linux-${bun_arch}/bun" /out/usr/local/bin/bun; \
     ln -s bun /out/usr/local/bin/bunx; \
+    dl "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_${arch}.tar.gz" gh.tgz; \
+    echo "${gh_sha}  gh.tgz" | sha256sum -c -; \
+    tar -xzf gh.tgz "gh_${GH_VERSION}_linux_${arch}/bin/gh"; \
+    install -m 0755 "gh_${GH_VERSION}_linux_${arch}/bin/gh" /out/usr/local/bin/gh; \
     install -m 0644 /opt/baked-tools.env /out/etc/baked-tools.env; \
     cd /; rm -rf "$work"
 
@@ -163,7 +167,8 @@ RUN set -eu; \
     test -x /usr/local/bin/tailscaled; \
     test "$(bun --version)" = "${BUN_VERSION}"; \
     test "$(bunx --version)" = "${BUN_VERSION}"; \
-    test "$(monolith --version)" = "monolith ${MONOLITH_VERSION}"
+    test "$(monolith --version)" = "monolith ${MONOLITH_VERSION}"; \
+    test "$(gh --version | head -n1 | cut -d' ' -f3)" = "${GH_VERSION}"
 
 COPY start.sh /start.sh
 COPY failure-server.js /failure-server.js
@@ -171,6 +176,11 @@ RUN chmod +x /start.sh
 
 ENV PATH="/app/node_modules/.bin:$PATH"
 ENV ALPHACLAW_ROOT_DIR=/data
+
+# gh auth/config state lives on the persistent /data disk so GitHub
+# connections survive redeploys and container replacement. No token is
+# baked into the image.
+ENV GH_CONFIG_DIR=/data/.openclaw/gh
 
 # Route temp onto the persistent disk instead of the container's ephemeral /tmp.
 # OpenClaw is migrating hardcoded /tmp callsites to TMPDIR-aware APIs; any code
