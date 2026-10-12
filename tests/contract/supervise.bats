@@ -193,13 +193,18 @@ SLEEPER
 }
 
 @test "orphan sweep TERMs stragglers matching ORPHAN_SWEEP_PATTERN" {
-  # Dedicated stub: first run spawns a tagged orphan, then exits 1.
+  # Dedicated stub: first run spawns a tagged orphan, then exits 1. The stub
+  # must not exit until the orphan is visible to pgrep -f: between fork and
+  # exec the child still carries the stub's own argv (no tag), and on a slow
+  # CI runner the supervisor's sweep pgrep can land in that window, find
+  # nothing, and never log "orphan sweep complete".
   make_tagged_sleeper "$TAG-orphan.sh"
   cat >"$T/stub-alphaclaw" <<STUB
 #!/bin/bash
 n=\$(cat "\$STUB_DIR/count" 2>/dev/null || echo 0); n=\$((n+1)); echo "\$n" >"\$STUB_DIR/count"
 if [ "\$n" -eq 1 ]; then
   nohup bash "$T/$TAG-orphan.sh" >/dev/null 2>&1 &
+  for _ in \$(seq 1 40); do pgrep -f "$TAG-orphan.sh" >/dev/null 2>&1 && break; sleep 0.1; done
   exit 1
 fi
 sleep 300 &
