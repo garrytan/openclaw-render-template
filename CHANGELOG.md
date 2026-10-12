@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.22] - 2026-10-12
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.3 to 0.10.4 (`b54801ecb776cbe1b6ad9cd30c6caef231348341`), part 2 of alphaclaw issue #140: the dashboard's git-sync surfaces move onto the 0.10.3 engine. The General tab's Sync button and the models/Telegram/webhook settings saves now run `alphaclaw git-sync --json` through a server-side runner (shared writer lock, scoped commits, merge-tree integration, status file) instead of their own `add -A` / commit / push in the live tree, with the engine's sentence as the warning text and 409 + next step on a refusal. The scheduled sync moves off the `:00` minute to a per-install minute derived from a sha256 of the repo and managed path (1–59, never a quarter hour), labelled in the schedule presets; a stored schedule is never rewritten. The repo card shows last-run status from `.alphaclaw/git-sync-status.json` (redacted: code, headline, times, failure count, files behind GitHub). No runtime changes for the template: OpenClaw stays pinned at exactly 2026.9.8; the Node `>=24.16.0 <25 || >=26.1.0` gate and the `node:24-slim` base are unchanged.
+
 ## [2.0.0.21] - 2026-10-12
 
 ### Changed
