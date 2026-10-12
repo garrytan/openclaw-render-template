@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.20] - 2026-10-11
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.0 to 0.10.2 (`bf728c3d3373b5bf46b3a91ee047ac1d0f38efe6`), the two follow-ups to the 0.10.0 restart ladder. 0.10.1 fixes restarts ending in `stop_failed` while the gateway was already down (alphaclaw bug #137): process liveness is now read from `/proc/<pid>/stat` so a zombie counts as gone instead of a survivor, the graceful `openclaw gateway restart --wait` ask is skipped with a logged reason when it cannot work (no `lsof`, `OPENCLAW_NO_RESPAWN` pinned, no worker, no budget) instead of failing in milliseconds, a `/proc`-backed `lsof` shim is appended to the ask's PATH only (never the gateway's) where the binary is missing, the ladder records kill-set evidence (admin sessions only, behind the Watchdog tab's "Restart evidence" disclosure), and a failed restart hands the watchdog a note so recovery rechecks at 0/5/15/30/60 s instead of waiting for three 120 s health misses. 0.10.2 links the pieces: the restart-required banner no longer clears itself on a fresh unrecovered failed restart, the card says what brought the gateway back and whether the operator's changes are live, `gateway_down` incidents opened after a failed restart carry `cause: restart_<code>`, `doctor --fix` logs a heartbeat every 30 s, and the operation record keeps a bounded step timeline. OpenClaw stays pinned at exactly 2026.9.8; the Node `>=24.16.0 <25 || >=26.1.0` gate and the `node:24-slim` base are unchanged.
+- Dockerfile: the runtime apt layer now installs `lsof`. The pinned OpenClaw CLI locates the gateway listener through it, so without it the graceful restart ask refuses ("No verified gateway process is listening") and every restart goes straight to SIGTERM; alphaclaw's shim covers the gap, but upstream's reference image ships the real binary and that is what its restart ladder is tested against. New contract test `Dockerfile: installs lsof` pins the decision the same way the tmux test does.
+
 ## [2.0.0.19] - 2026-10-07
 
 ### Changed
