@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.21] - 2026-10-12
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.2 to 0.10.3 (`577695a2e2912777e96cffea0998e971c22aa0c0`): `alphaclaw git-sync` now cooperates with other writers on the box (alphaclaw issue #140). Every sync holds an exclusive `flock` on `<git common dir>/alphaclaw-writer.lock` from preflight to the final fast-forward (120 s wait when scheduled, 15 s otherwise; a timeout exits 75 and names the holder), commits only paths with working-tree changes instead of `add -A`, and integrates with `merge-tree` + `commit-tree` pushed to origin followed by an `--ff-only` of the live tree, so there is no pull, rebase or stash in the live tree and another writer's staged-only entries stay staged. Refusals are loud: each run writes `.alphaclaw/git-sync-status.json`, failure episodes become one notification plus a `git_sync_refused` watchdog event, and Doctor shows episode-scoped cards. The hourly script now runs `git-sync --trigger scheduled` only (its own `git restore` of `cron/jobs.json` raced the gateway's writes). The image already ships `flock` from `util-linux`, so the lock is live from this deploy. OpenClaw stays pinned at exactly 2026.9.8; the Node `>=24.16.0 <25 || >=26.1.0` gate and the `node:24-slim` base are unchanged.
+
 ## [2.0.0.20] - 2026-10-11
 
 ### Changed
