@@ -46,6 +46,17 @@ setup() {
   grep -Eq 'apt-get install[^&]* tmux( |$)' "$REPO/Dockerfile"
 }
 
+# --- lsof (graceful gateway restart ask) ---------------------------------------
+
+@test "Dockerfile: installs lsof (graceful gateway restart ask)" {
+  # The pinned OpenClaw CLI finds the running gateway through lsof; without it
+  # `openclaw gateway restart --wait` refuses ("No verified gateway process is
+  # listening") and alphaclaw's restart ladder skips the graceful ask and goes
+  # straight to SIGTERM. alphaclaw 0.10.1 ships a /proc shim as a fallback, but
+  # the real binary is what upstream's reference image runs.
+  grep -Eq 'apt-get install[^&]* lsof( |$)' "$REPO/Dockerfile"
+}
+
 @test "CI workflow: installs tmux so the rescue-survival test can never silently skip" {
   # supervise.bats skips its tmux-survival test when the host lacks tmux, and
   # bats reports skips as green — so CI must install tmux explicitly or the
