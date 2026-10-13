@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.23] - 2026-10-13
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.4 to 0.10.5 (`3d980c1bd7e51d9ab20a73fa423ae091584150f2`), which moves its exact OpenClaw pin from 2026.9.8 to **2026.10.2** (2026.9.9 and 2026.10.1 shipped in between). 2026.10.1 moves the state database to schema 20; upstream notes that going back to 2026.9.x means restoring a verified backup, never reinstall-and-boot. 0.10.5 carries the compatibility fixes the new pin needs: the agent roster is written in 2026.10's canonical shape (keyed `agents.entries`, no `default` markers, explicit ownership past one agent — on 2026.10 the old shape left a config the gateway refuses with exit 78 on the next start), the shared auth store accepts schema 20 (otherwise every credential read was `AUTH_STORE_UNREADABLE`), `/readyz` phases are read as 2026.x actually reports them, the cross-container owner-lease refusal classifies as `owner_lease_held` instead of a crash loop, the gateway daemon launches with `OPENCLAW_DEBUG=1` so crash reasons are visible again, pairing/approvals/chat during warm-up return retryable 503s, and model prices come from OpenClaw's plugin manifests (86 priced models). The `openclaw` operator wrapper now exports the supervisor contract, so `openclaw update` from a shell refuses to replace the pinned package. No runtime changes for the template: the Node `>=24.16.0 <25 || >=26.1.0` gate and the `node:24-slim` base are unchanged, and nothing in the image, `start.sh` or the test suites names an OpenClaw version.
+
 ## [2.0.0.22] - 2026-10-12
 
 ### Changed
