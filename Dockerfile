@@ -97,7 +97,11 @@ RUN set -eu; \
 # --- final image
 FROM node:24-slim
 
-RUN apt-get update && apt-get install -y git curl procps python3 make g++ cron tini vim screen tmux && rm -rf /var/lib/apt/lists/*
+# lsof: the pinned OpenClaw CLI locates the gateway listener through it, so the
+# graceful `openclaw gateway restart --wait` ask in alphaclaw's restart ladder
+# refuses without it (alphaclaw 0.10.1 ships a /proc-backed shim as a fallback,
+# but the real binary is what upstream's reference image runs).
+RUN apt-get update && apt-get install -y git curl procps python3 make g++ cron tini vim screen tmux lsof && rm -rf /var/lib/apt/lists/*
 
 # Support packages + the PostgreSQL CLIENT (never the server) from the signed PGDG
 # repo. Sits ABOVE the npm layers on purpose: alphaclaw pin bumps are frequent and
