@@ -2,7 +2,7 @@ services:
   - type: web
     runtime: docker
     name: AlphaClaw
-    plan: starter
+    plan: 2c-8g
     healthCheckPath: /health
     envVars:
       - key: SETUP_PASSWORD
@@ -16,4 +16,4 @@ services:
     disk:
       name: openclaw-data
       mountPath: /data
-      sizeGB: 10
+      sizeGB: 50

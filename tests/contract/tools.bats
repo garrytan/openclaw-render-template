@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 #
-# Contract tests for the baked tools (Caddy, Tailscale, Bun, monolith, the
+# Contract tests for the baked tools (Caddy, Tailscale, Bun, GitHub CLI, monolith, the
 # PostgreSQL client, git-lfs, jq + support packages). Static assertions that
 # lock in the pin manifest (baked-tools.env), the Dockerfile stage layout and
 # layer order, the "verify every download / never ARG / never start a daemon"
@@ -149,6 +149,7 @@ env_value() { sed -nE "s/^$1=(.*)$/\1/p" "$ENVF"; }
   grep -qF 'test "$(bun --version)" = "${BUN_VERSION}"' <<<"$final"
   grep -qF 'test "$(bunx --version)" = "${BUN_VERSION}"' <<<"$final"
   grep -qF 'test "$(monolith --version)" = "monolith ${MONOLITH_VERSION}"' <<<"$final"
+  grep -qF 'test "$(gh --version | head -n1 | cut -d'"'"' '"'"' -f3)" = "${GH_VERSION}"' <<<"$final"
 }
 
 @test "Dockerfile: the header diagram names every package the apt/PGDG RUN installs" {
@@ -204,8 +205,8 @@ env_value() { sed -nE "s/^$1=(.*)$/\1/p" "$ENVF"; }
 
 @test "Dockerfile: every artifact download in the tools stage is checksum-verified" {
   code=$(stage_text tools | grep -vE '^[[:space:]]*#')
-  [ "$(grep -c 'dl "https://' <<<"$code")" -eq 3 ]
-  [ "$(grep -Ec 'sha(256|512)sum -c -' <<<"$code")" -eq 3 ]
+  [ "$(grep -c 'dl "https://' <<<"$code")" -eq 4 ]
+  [ "$(grep -Ec 'sha(256|512)sum -c -' <<<"$code")" -eq 4 ]
   # the only command-position curl in the stage is the dl() definition itself
   [ "$(grep -Ec "$CURL_CMD_ERE" <<<"$code")" -eq 1 ]
 }
