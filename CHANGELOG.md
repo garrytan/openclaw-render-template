@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.24] - 2026-10-16
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.5 to 0.10.7 (`a297ae4941f10acd373e35dc6edfdd3f741c56b5`), which moves its exact OpenClaw pin from 2026.10.2 to **2026.10.4** (Doctor data-preservation fixes, gateway ownership that survives sleep and clock jumps, bounded shutdown waits; state schemas unchanged at `{ state: 20, agent: 24 }`). 0.10.6 fixes alphaclaw #144, which hits this image directly: OpenClaw 2026.10's atomic file writer refuses a parent directory that is a symlink, so on a symlinked state directory every `doctor --fix` and CLI config write failed with "Atomic replace parent must be a real directory", and since every pin bump reruns Doctor on boot, each 2026.10.x deploy started with a failed migration. alphaclaw now resolves only `OPENCLAW_CONFIG_PATH` to the symlink's target while `OPENCLAW_STATE_DIR` stays lexical. It also stops booking a slow gateway boot as an incident, records every Doctor run's outcome, and remembers deterministic boot-Doctor failures for 24 h instead of re-running them. 0.10.7 gives the data upgrade a home on the dashboard: an alert under the Gateway card while the installed pin's `doctor --fix` is unfinished, a Retry upgrade action that runs Doctor between stop and relaunch without restarting alphaclaw, an Enable snapshots action (`chmod +t` on exactly the directories OpenClaw's pre-repair snapshot check refuses), and a redacted Doctor transcript. No runtime changes for the template: the Node `>=24.16.0 <25 || >=26.1.0` gate and the `node:24-slim` base are unchanged.
+
 ## [2.0.0.23] - 2026-10-13
 
 ### Changed
