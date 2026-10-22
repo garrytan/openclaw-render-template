@@ -188,8 +188,11 @@ The image ships a fixed set of operator/agent tools so they survive redeploys in
 | Tailscale (`tailscale`, `tailscaled`)                                    | 1.102.3         | pkgs.tailscale.com static tgz                                | SHA-256 sidecar                     | `/usr/local/bin/{tailscale,tailscaled}`                           | BSD-3-Clause |
 | Bun (`bun`, `bunx`)                                                      | 1.4.2           | GitHub release zip                                           | SHA-256 from `SHASUMS256.txt`       | `/usr/local/bin/{bun,bunx}`                                       | MIT          |
 | monolith                                                                 | 2.10.1          | built from git rev `47affd5f…` with `cargo install --locked` | commit + `Cargo.lock`               | `/usr/local/bin/monolith`                                         | CC0-1.0      |
+| GitHub CLI (`gh`)                                                        | 2.99.0          | GitHub release tarball                                       | SHA-256 from upstream `gh_<ver>_checksums.txt` | `/usr/local/bin/gh`                              | MIT          |
 | PostgreSQL client                                                        | 17              | PGDG signed apt repo                                         | apt signature + key fingerprint     | `/usr/lib/postgresql/17/bin` (+ `/usr/bin` via `pg_wrapper`)      | PostgreSQL   |
 | git-lfs, jq, openssl, ca-certificates, flock (util-linux), fuser (psmisc) | Debian bookworm | Debian bookworm apt                                          | apt signatures                      | `/usr/bin`, `/bin`                                                | see Debian   |
+
+`gh` is required on the Gateway host's PATH by OpenClaw's GitHub integration. Its auth/config state resolves to `GH_CONFIG_DIR=/data/.openclaw/gh` on the persistent disk, so GitHub connections survive redeploys and container replacement; no token is baked into the image.
 
 **Nothing is auto-started.** Installing a tool does not enable it: the image launches no `tailscaled`, no `caddy`, opens no extra port and adds no cron job. A fresh deploy reaches the setup UI with no Tailscale or Caddy configuration. Gateway lifecycle stays with AlphaClaw.
 
