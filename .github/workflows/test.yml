@@ -14,6 +14,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+          # Resolve the newest 24.x: a runner-cached Node can sit below the
+          # >=24.22.1 floor openclaw 2026.10.6 (via the alphaclaw pin) requires.
+          check-latest: true
       - name: Install shellcheck + bats + tmux
         # tmux is explicit, never assumed from the runner image — without it
         # the rescue-session survival test skips and CI goes green unproven.
