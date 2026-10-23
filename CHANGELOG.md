@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.26] - 2026-10-23
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.68 to 0.10.75 (`b6405c1e02a17c56e2398503f6633d28350e6b10`), the ALPH-22 memory-watchdog series written against the critique the deployed agent produced on a 100 GB host. `leak_critical` now judges a leak rather than load: on the verified gateway worker, held for three consecutive fresh evaluations, it needs a positive RSS slope, a real floor (worker private memory at 90% of the budget or the V8 heap at 70% of its limit) and a heap signal, so a burst of real work with many tool children stays a warning (0.10.71). With no operator budget the budget is 75% of min(container limit, host MemTotal) instead of configured heap + 192 MiB, which on that host moves it from 8.4 GB to 76.8 GB (0.10.72). An automatic memory restart needs a `restartAuthority` (heap at 85% of its V8 limit, the worker itself filling the container at 90%, or the operator's own budget); critical alone records one `mitigation_skipped` per episode and leaves the gateway alone (0.10.73). Notifications collapse to one message per episode tier after a five-minute hold, with a combined "spiked and recovered" message and a cleared follow-up, and the brake notice no longer advises a manual restart (0.10.74). The PSS sampler keeps its cached sample when the rescue session reads Resources without naming the gateway, which had been restarting collection every other tick (0.10.75). 0.10.69–0.10.70 are test-only. No runtime changes for the template: OpenClaw stays pinned at exactly 2026.10.6; the Node `>=24.22.1 <25 || >=26.12.1` gate and the `node:24-slim` base are unchanged.
+
 ## [2.0.0.25] - 2026-10-22
 
 ### Changed
