@@ -90,7 +90,8 @@ env_value() { sed -nE "s/^$1=(.*)$/\1/p" "$ENVF"; }
   grep -qE '^FROM rust:[0-9]+\.[0-9]+\.[0-9]+-slim-bookworm@sha256:[0-9a-f]{64} AS monolith-build$' "$DF"
   grep -qxF 'FROM node:24-slim' "$DF"
   [ "$(grep -c '^FROM ' "$DF")" -eq 4 ]
-  # Node 24 is the runtime (openclaw 2026.9.3 gates on >=24.16.0): no other base sneaks in
+  # Node 24 is the runtime (openclaw 2026.10.6 gates on >=24.22.1 <25 || >=26.12.1;
+  # node:24-slim resolves to 24.22.1+): no other base sneaks in
   run grep -E '^FROM (node:(1[0-9]|2[0-35-9]|[3-9][0-9])|debian|ubuntu|alpine)' "$DF"
   [ "$status" -ne 0 ]
 }

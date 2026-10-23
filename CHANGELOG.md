@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.25] - 2026-10-22
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.7 to 0.10.68 (`2269d88afa15401045f3898b5099241d32e1c873`), 61 upstream releases. The one that touches the runtime contract is 0.10.48, which moves the exact OpenClaw pin from 2026.10.4 to **2026.10.6** (the stability patch for the 2026.10.5 line: recovery for held agent/system-agent databases after schema-changing upgrades, frozen startup owners) and raises the Node floor to `>=24.22.1 <25 || >=26.12.1` because 2026.10.6 requires the October 2026 Node security releases and exits 1 on anything older; alphaclaw's new `preinstall` check (0.10.12) refuses to install on such a runtime. The pin's agent schema moves 24 → 25 (state stays 20) and the upgrade is one-way: 2026.10.4 refuses the migrated state, so rolling back means restoring the pre-upgrade backup. The rest of the range: the ALPH-17/19 restart series (routine restarts let OpenClaw finish active work for up to 3 minutes with a Restart now override, every restart names its source and reason, a tool child can no longer make the gateway look like it is leaking, a post-relaunch wedge sweep resumes or alerts on stuck sessions, interrupted exec turns are resumed or reported to the owner, a cold restart always relaunches); the Control UI at `/openclaw` connects on every hostname instead of only the boot-time origin (0.10.14, which was breaking Render custom domains) and a signed-in admin can open it directly (0.10.15); team access enables again on OpenClaw 2026.10 (0.10.64) and a team transition no longer cuts off the running turn (0.10.66); constant-time secret comparisons everywhere (0.10.18); container memory pressure judged on the cgroup working set rather than page cache (0.10.19); GPT-6 under Codex OAuth and Claude 5.5 defaults in the model catalog (0.10.10); the installed-vs-pinned OpenClaw visible on status, General and Doctor (0.10.27); honest boot status with real stages and times (0.10.8); and the ALPH-15 refactor series (0.10.21–0.10.47, no behavior changes beyond the overseer dropping its "rollback" offer).
+- `package.json` `engines.node` moves with the pin to `>=24.22.1 <25 || >=26.12.1`. The `node:24-slim` base already resolves to 24.22.1, so the image clears the new floor without a Dockerfile change; the base-image contract test's comment names the new gate.
+- CI: `actions/setup-node` sets `check-latest: true` so the unit/contract job resolves the newest 24.x instead of a runner-cached Node that can sit below the floor the template now declares.
+
 ## [2.0.0.24] - 2026-10-16
 
 ### Changed
