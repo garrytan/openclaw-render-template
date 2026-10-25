@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.28] - 2026-10-25
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.110 to 0.10.112 (`ba9f2bc7eb80265a00119c608733ba6c3765635e`): `ALPHACLAW_GIT_SYNC=off` turns AlphaClaw's git sync off for a repository another writer owns (0.10.111), and the abandoned OpenClaw SQLite snapshot sweep now also runs every 30 minutes while the gateway runs (0.10.112). OpenClaw stays at 2026.10.7; no template runtime changes.
+
 ## [2.0.0.27] - 2026-10-25
 
 ### Changed
