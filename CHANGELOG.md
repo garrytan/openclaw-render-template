@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.27] - 2026-10-25
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.75 to 0.10.110 (`1ff3c8581f8110e36606e73099d9114c4b0e2e24`), bringing OpenClaw 2026.10.7. Highlights for this deploy: orphaned OpenClaw read-only SQLite copies are swept before each gateway launch (#245), a free-disk alert and disk-full notices (#247, #250), and the git-sync and watchdog fixes since 0.10.75. No template runtime changes: the Node `>=24.22.1 <25 || >=26.12.1` gate and the `node:24-slim` base are unchanged.
+
 ## [2.0.0.26] - 2026-10-23
 
 ### Changed
