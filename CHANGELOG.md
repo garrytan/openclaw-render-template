@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.32] - 2026-10-26
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.136 to 0.10.137 (`6a08099e44496d9f6987a5cbdbfc43cf5498afb8`): after a predecessor gateway was SIGKILLed in another container, the watchdog relaunches when OpenClaw's ownership heartbeat lapses (about 90 s) instead of waiting out the 300 s lease, and the boot shows a `lock_wait` step instead of failing. This ships with 2.0.0.31's graceful-stop fix: the first deploy replaces a container whose old start.sh still SIGKILLs the gateway, so the new container must be the one that handles the stale heartbeat. OpenClaw stays at 2026.10.7.
+
 ## [2.0.0.31] - 2026-10-26
 
 ### Fixed
