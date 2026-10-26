@@ -303,6 +303,35 @@ STUB
   [ "$(cat "$T/count")" -eq 1 ]
 }
 
+@test "a TERM to the whole group (tini -g) reaches alphaclaw exactly once" {
+  # Node, like alphaclaw: every delivery runs the handler (bash would coalesce).
+  cat >"$T/count-term-alphaclaw" <<STUB
+#!$(command -v node)
+const fs = require("fs");
+process.on("SIGTERM", () => {
+  fs.appendFileSync("$T/terms", "TERM\n");
+  setTimeout(() => { console.log("stub: final line"); process.exit(0); }, 1000);
+});
+console.log("stub: up");
+setInterval(() => {}, 1000);
+STUB
+  chmod +x "$T/count-term-alphaclaw"
+  env STUB_DIR="$T" ALPHACLAW_BIN="$T/count-term-alphaclaw" \
+    FAILURE_SERVER="$T/stub-failure-server.js" NODE_BIN="$(command -v node)" \
+    LOGFILE="$T/start.log" ORPHAN_SWEEP_PATTERN="$TAG" \
+    BACKOFF_STEP_SECS=0 SPIN_BRAKE_SECS=0 \
+    setsid bash "$REPO/start.sh" >"$T/stdout.log" 2>&1 3>&- &
+  SUP_PID=$!
+  wait_for_log "stub: up" 20
+  [ "$(ps -o pgid= -p "$SUP_PID" | tr -d ' ')" = "$SUP_PID" ]
+  kill -TERM -- "-$SUP_PID"
+  EC=0; wait "$SUP_PID" || EC=$?
+  SUP_PID=""
+  [ "$EC" -eq 0 ]
+  grep -q "stub: final line" "$T/start.log"
+  [ "$(wc -l <"$T/terms")" -eq 1 ]
+}
+
 @test "start.sh exits with alphaclaw's own code after TERM" {
   make_graceful_stub 3
   run_supervisor ALPHACLAW_BIN="$T/graceful-alphaclaw"

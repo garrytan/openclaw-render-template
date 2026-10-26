@@ -189,9 +189,10 @@ RUN mkdir -p /data/tmp && chmod 1777 /data/tmp
 
 EXPOSE 3000
 
-# -g: tini signals the ENTIRE process group, so a TERM to PID 1 reaches
-# alphaclaw, tee, and any backoff sleep directly from the kernel. tini exits
-# as soon as start.sh exits, so start.sh traps TERM/INT and waits for
-# alphaclaw's graceful shutdown before it exits (see start.sh "Signals").
+# -g: tini signals start.sh's ENTIRE process group (start.sh, tee, any backoff
+# sleep). tini exits as soon as start.sh exits, so start.sh traps TERM/INT,
+# forwards the signal once to alphaclaw (which runs in its own group via
+# setsid, so it never gets a second TERM) and waits for its graceful shutdown
+# before it exits (see AGENTS.md "Signals").
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
 CMD ["/start.sh"]

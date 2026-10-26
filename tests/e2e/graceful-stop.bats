@@ -100,6 +100,10 @@ teardown_file() {
   grep -qF "[alphaclaw] Shutting down: SIGTERM" <<<"$LOG"
   grep -qF "[deploy] SIGTERM with no announcement" <<<"$LOG"
   grep -qE "restart op=[^ ]+ requested source=shutdown" <<<"$LOG"
+  # The stop ladder finishes; a second TERM would skip it for the hard kill.
+  grep -qE "restart op=[^ ]+ stopped how=" <<<"$LOG"
+  run grep -qF "restart op=shutdown identity signal=SIGKILL" <<<"$LOG"
+  [ "$status" -ne 0 ]
   grep -qF "received SIGTERM; supervisor exiting with code" <<<"$LOG"
   HIST=$(_data 'cat /data/deploy-history.json')
   echo "$HIST" >&2

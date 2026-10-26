@@ -138,7 +138,14 @@ run_logged() {
   fi
   (trap '' TERM INT; exec tee -a "$LOGFILE" <"$fifo") &
   tee_pid=$!
-  "$@" >"$fifo" 2>&1 &
+  # setsid: the child gets its own process group, so tini -g's group TERM
+  # doesn't reach it and on_stop_signal's forward is the only one. A second
+  # TERM makes alphaclaw abandon its drain and SIGKILL the gateway.
+  if command -v setsid >/dev/null 2>&1; then
+    setsid "$@" >"$fifo" 2>&1 &
+  else
+    "$@" >"$fifo" 2>&1 &
+  fi
   child_pid=$!
   if [ -n "$STOP_SIGNAL" ]; then
     kill -s "$STOP_SIGNAL" "$child_pid" 2>/dev/null || true
