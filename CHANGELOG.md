@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.35] - 2026-10-26
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.140 to 0.10.144 (`25f6ecc15ffb157a4a24308690800dc57e5357f4`). 0.10.141: the hourly sync cron.d job now carries TMPDIR, TMP and TEMP, so its scratch files land on the disk instead of the container's /tmp. 0.10.142: a model check (Models tab, `POST /api/models/check`) tests each configured model ref, and a `model_not_found` failure now tells the owner which model failed, what the provider answered, and the fix. 0.10.143: OpenClaw's file log moves from /tmp/openclaw to <root>/logs/openclaw on the disk. 0.10.144: the deploy-shutdown ask reserves time for OpenClaw to close slow-exiting stdio MCP servers, so they no longer push the shutdown into SIGKILL. OpenClaw stays at 2026.10.7.
+- `start.sh` writes TMPDIR, TEMP and TMP (`/data/tmp`) to `/etc/environment` at boot, so every root crontab job gets them through pam_env too.
+
 ## [2.0.0.34] - 2026-10-26
 
 ### Changed
