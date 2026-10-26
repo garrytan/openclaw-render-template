@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.34] - 2026-10-26
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.139 to 0.10.140 (`430157e822af3a1e0006a0616edace3c62ccd3f2`): on a platform SIGTERM, AlphaClaw asks OpenClaw for a drain sized to the time left in `ALPHACLAW_SHUTDOWN_GRACE_SECONDS` (default 25 s, inside Render's default 30 s shutdown delay) and SIGKILLs the gateway only at that deadline, instead of a fixed 6 s slice. OpenClaw stays at 2026.10.7.
+
 ## [2.0.0.33] - 2026-10-26
 
 ### Changed
