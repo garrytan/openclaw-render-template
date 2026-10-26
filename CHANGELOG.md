@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.33] - 2026-10-26
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.137 to 0.10.139 (`fae0a5b4f388fc41cac0c5470942d1dbca6a8b7e`): restart history (20 boots or 14 days) with each boot's cause, including unclean exits such as a platform instance replacement (0.10.138), and the boot's Codex migration and plugin reconciliation run once per OpenClaw build instead of on every boot, with a redacted summary of their diagnostics (0.10.139). OpenClaw stays at 2026.10.7.
+
 ## [2.0.0.32] - 2026-10-26
 
 ### Changed
