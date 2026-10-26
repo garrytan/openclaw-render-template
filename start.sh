@@ -86,6 +86,12 @@ export PATH="/app/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/us
 export TMPDIR=/data/tmp TEMP=/data/tmp TMP=/data/tmp
 mkdir -p "$TMPDIR" 2>/dev/null || true
 chmod 1777 "$TMPDIR" 2>/dev/null || true
+# cron starts its jobs with a minimal environment, so a job an operator or the
+# agent schedules would write to the container's own /tmp. Debian's cron reads
+# /etc/environment through pam_env: put the temp trio there for every job.
+if { grep -vE '^(TMPDIR|TEMP|TMP)=' /etc/environment 2>/dev/null; printf 'TMPDIR=%s\nTEMP=%s\nTMP=%s\n' "$TMPDIR" "$TEMP" "$TMP"; } > /etc/environment.new 2>/dev/null; then
+  mv -f /etc/environment.new /etc/environment 2>/dev/null || true
+fi
 
 {
   echo "=== boot $(date -u +%FT%TZ) ==="
