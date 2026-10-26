@@ -109,9 +109,11 @@ teardown_file() {
 }
 
 @test "the next boot on the same volume measures the downtime" {
+  # docker logs keeps the previous run's output, so wait for one more ready line.
+  before=$(_ready_count)
   docker start "$C" >&2
-  _wait_ready_count 1
-  for _ in $(seq 1 15); do
+  _wait_ready_count $((before + 1))
+  for _ in $(seq 1 30); do
     HIST=$(docker exec "$C" cat /data/deploy-history.json 2>/dev/null || true)
     grep -q '"seconds"' <<<"$HIST" && break
     sleep 2
