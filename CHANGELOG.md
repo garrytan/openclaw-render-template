@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.29] - 2026-10-26
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.112 to 0.10.134 (`aca7e6643bab3ab3e928c2498776e463ee759493`): read-only box status views (processes, restart, schedules, disk, MCP) and the Watchdog Box card, honoring the operator box lock, operator sidecars, deploy announcements with measured downtime, an agent downtime note after outages, copy retention for backups and update captures, single-document `--json` CLI output, consistent agent git rules with a writer set, and git sync fixes for a symlinked state dir. OpenClaw stays at 2026.10.7; no template runtime changes.
+
 ## [2.0.0.28] - 2026-10-25
 
 ### Changed
