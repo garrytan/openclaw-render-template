@@ -126,3 +126,12 @@ setup() {
   grep -q 'MAX_LOG_BYTES' "$REPO/start.sh"
   grep -q "\.1" "$REPO/start.sh"
 }
+
+@test "start.sh: traps TERM/INT so alphaclaw's graceful shutdown can finish" {
+  # Without the trap bash dies on TERM, tini exits with it and the container
+  # ends before alphaclaw writes its shutdown record (supervise.bats proves
+  # the behavior; this pins the wiring).
+  grep -q "trap 'on_stop_signal TERM' TERM" "$REPO/start.sh"
+  grep -q "trap 'on_stop_signal INT' INT" "$REPO/start.sh"
+  grep -q "trap '' TERM INT; exec tee -a" "$REPO/start.sh"
+}

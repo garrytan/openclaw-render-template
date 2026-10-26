@@ -21,8 +21,12 @@
 #                               these cycles.
 #
 # Signals: the Dockerfile ENTRYPOINT is `tini -g`, which TERMs the entire
-# process group — alphaclaw, tee, and any backoff sleep get the signal
-# directly, so this script needs no traps or job control.
+# process group. tini exits as soon as THIS script exits, and the container
+# goes with it, so the script must outlive alphaclaw's graceful shutdown
+# (SIGTERM notice, deploy-history record, gateway stop): it traps TERM/INT,
+# forwards the signal to the running child, waits for it, and exits with the
+# child's code. The tee that writes $LOGFILE ignores TERM/INT so alphaclaw's
+# last lines still reach the log; it ends when alphaclaw closes its output.
 
 LOGFILE="${LOGFILE:-/data/start.log}"
 ALPHACLAW_BIN="${ALPHACLAW_BIN:-/app/node_modules/.bin/alphaclaw}"
@@ -92,6 +96,73 @@ chmod 1777 "$TMPDIR" 2>/dev/null || true
 
 set -o pipefail
 
+STOP_SIGNAL=""
+child_pid=""
+on_stop_signal() {
+  STOP_SIGNAL="$1"
+  if [ -n "$child_pid" ]; then
+    kill -s "$1" "$child_pid" 2>/dev/null || true
+  fi
+}
+trap 'on_stop_signal TERM' TERM
+trap 'on_stop_signal INT' INT
+
+# Waits for child_pid to exit, staying responsive to TERM/INT (a trap
+# interrupts `wait` while the child still runs). Sets CODE.
+wait_child() {
+  local status
+  while :; do
+    wait "$child_pid"
+    status=$?
+    kill -0 "$child_pid" 2>/dev/null || break
+  done
+  child_pid=""
+  CODE=$status
+}
+
+exit_if_stopping() { # code
+  [ -z "$STOP_SIGNAL" ] && return 0
+  log "received SIG$STOP_SIGNAL; supervisor exiting with code $1"
+  exit "$1"
+}
+
+# Runs "$@" with stdout+stderr appended to $LOGFILE through a tee that
+# ignores TERM/INT, and waits for it. Sets CODE.
+run_logged() {
+  local fifo tee_pid
+  fifo=$(mktemp -u "$(dirname "$LOGFILE")/.start-log.XXXXXX")
+  if ! mkfifo -m 600 "$fifo" 2>/dev/null; then
+    "$@" 2>&1 | tee -a "$LOGFILE"
+    CODE=${PIPESTATUS[0]}
+    return
+  fi
+  (trap '' TERM INT; exec tee -a "$LOGFILE" <"$fifo") &
+  tee_pid=$!
+  "$@" >"$fifo" 2>&1 &
+  child_pid=$!
+  if [ -n "$STOP_SIGNAL" ]; then
+    kill -s "$STOP_SIGNAL" "$child_pid" 2>/dev/null || true
+  fi
+  wait_child
+  # tee ends when the last writer closes the fifo. A descendant that kept
+  # alphaclaw's stdout must not hold the supervisor (and the container) open:
+  # give tee 3s to drain, then stop it (it ignores TERM).
+  local i
+  for i in $(seq 1 30); do
+    kill -0 "$tee_pid" 2>/dev/null || break
+    sleep 0.1
+  done
+  kill -KILL "$tee_pid" 2>/dev/null || true
+  wait "$tee_pid" 2>/dev/null
+  rm -f "$fifo"
+}
+
+pause() { # seconds
+  sleep "$1" &
+  child_pid=$!
+  wait_child
+}
+
 # The failure page can't fill the 10GB disk: rotate an oversized boot log
 # (single .1 generation) before each launch.
 rotate_log() {
@@ -129,10 +200,14 @@ FAILURE_EPOCH=""   # unix seconds; set on entering failure mode, cleared by a >w
 
 while :; do
   rotate_log
+  exit_if_stopping 0
   start_ts=$(date +%s)
-  "$ALPHACLAW_BIN" start 2>&1 | tee -a "$LOGFILE"
-  CODE=${PIPESTATUS[0]}
+  run_logged "$ALPHACLAW_BIN" start
   dur=$(($(date +%s) - start_ts))
+  if [ -n "$STOP_SIGNAL" ]; then
+    log "alphaclaw exited $CODE after ${dur}s after SIG$STOP_SIGNAL"
+    exit_if_stopping "$CODE"
+  fi
 
   sweep_orphans
 
@@ -145,7 +220,7 @@ while :; do
       if [ "$brake_streak" -ge 10 ]; then
         log "WARNING: $brake_streak consecutive sub-5s exit-75 runs — possible exit-75 loop; check for a wedged rollback/update"
       fi
-      sleep "$SPIN_BRAKE_SECS"
+      pause "$SPIN_BRAKE_SECS"
     else
       brake_streak=0
       log "exit 75 after ${dur}s — intentional restart; relaunching immediately"
@@ -182,7 +257,7 @@ while :; do
     [ "$backoff" -gt "$remaining" ] && backoff=$remaining
     cum_backoff=$((cum_backoff + backoff))
     log "exit $CODE after ${dur}s — rapid failure $fails/$MAX_RAPID_FAILS; backing off ${backoff}s (cumulative ${cum_backoff}s, cap ${CUM_BACKOFF_CAP_SECS}s)"
-    sleep "$backoff"
+    pause "$backoff"
     continue
   fi
 
@@ -194,8 +269,9 @@ while :; do
     FAILURE_EPOCH=$(date +%s)
   fi
   log "exit $CODE after ${dur}s — rapid failure $fails/$MAX_RAPID_FAILS; threshold reached, starting failure-status server (FAILURE_EPOCH=$FAILURE_EPOCH)"
-  FAILURE_EPOCH="$FAILURE_EPOCH" "$NODE_BIN" "$FAILURE_SERVER" 2>&1 | tee -a "$LOGFILE"
-  SCODE=${PIPESTATUS[0]}
+  run_logged env FAILURE_EPOCH="$FAILURE_EPOCH" "$NODE_BIN" "$FAILURE_SERVER"
+  SCODE=$CODE
+  exit_if_stopping "$SCODE"
   log "failure server exited with code $SCODE — resetting counter; retrying alphaclaw"
   fails=0
   cum_backoff=0

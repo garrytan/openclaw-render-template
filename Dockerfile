@@ -190,9 +190,8 @@ RUN mkdir -p /data/tmp && chmod 1777 /data/tmp
 EXPOSE 3000
 
 # -g: tini signals the ENTIRE process group, so a TERM to PID 1 reaches
-# alphaclaw, tee, and any backoff sleep directly from the kernel. This is what
-# lets start.sh's supervise loop stay a plain foreground loop with no trap /
-# job-control machinery — bash's default TERM disposition is fine because no
-# process depends on bash forwarding anything.
+# alphaclaw, tee, and any backoff sleep directly from the kernel. tini exits
+# as soon as start.sh exits, so start.sh traps TERM/INT and waits for
+# alphaclaw's graceful shutdown before it exits (see start.sh "Signals").
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
 CMD ["/start.sh"]

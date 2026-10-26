@@ -75,9 +75,9 @@ setup() {
 # --- Init + entrypoint --------------------------------------------------------
 
 @test "Dockerfile: uses tini -g as PID 1 (group signaling)" {
-  # -g is load-bearing: the supervise loop in start.sh is a plain foreground
-  # loop with no traps; prompt TERM delivery to alphaclaw/tee/sleep relies on
-  # tini signaling the whole process group.
+  # -g is load-bearing: TERM reaches alphaclaw, tee and any sleep directly
+  # from the kernel; start.sh also traps TERM/INT and waits for alphaclaw's
+  # graceful shutdown, because tini exits as soon as start.sh does.
   grep -Eq 'ENTRYPOINT \["/usr/bin/tini", "-g", "--"\]' "$REPO/Dockerfile"
 }
 

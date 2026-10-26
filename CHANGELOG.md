@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.31] - 2026-10-26
+
+### Fixed
+- **Graceful shutdown on deploy.** `start.sh` now traps TERM/INT, forwards the signal to the running child (alphaclaw, the failure server or a backoff sleep), waits for it and exits with its code. Before, bash died on the TERM that `tini -g` sends the whole group, tini exited with it, and the container ended before alphaclaw's graceful exit ran: no SIGTERM notice, no `/data/deploy-history.json` record (so no measured downtime on the next boot) and no gateway drain. The tee writing `/data/start.log` ignores TERM/INT so the last lines land, and gets 3 s to drain after the child exits so a descendant holding the output can't keep the container alive. `tini -g` is unchanged.
+
+### Tests
+- `supervise.bats`: TERM is forwarded and waited for, the exit code passes through, TERM during a backoff exits at once, and a lingering output holder can't block exit (all four fail on the old script). `scripts.bats` pins the trap wiring. New `tests/e2e/graceful-stop.bats` boots the image with a live gateway: SIGKILLed gateway and alphaclaw still recover inside the container, `docker stop -t 30` runs alphaclaw's shutdown (log lines, deploy-history record, gateway drain), and the next boot measures the downtime.
+
 ## [2.0.0.30] - 2026-10-26
 
 ### Changed
