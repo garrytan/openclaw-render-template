@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.30] - 2026-10-26
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.134 to 0.10.136 (`95edebe279765f53c9cf963beba8e888886b0b54`): one-key env PATCH with a delete count in the PUT confirm (0.10.135), and the alphaclaw-admin skill split into a short index plus one reference file per domain (0.10.136). OpenClaw stays at 2026.10.7; no template runtime changes.
+
 ## [2.0.0.29] - 2026-10-26
 
 ### Changed
