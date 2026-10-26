@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.36] - 2026-10-26
+
+### Changed
+- The image's baked Bun (`/usr/local/bin/{bun,bunx}`) moves from 1.4.2 to 1.4.4, the version Wintermute's gbrain processes run (1.4.4 fixes the #7644 memory leak). Each redeploy had been putting the box's servers that use the image's bun back on 1.4.2.
+
 ## [2.0.0.35] - 2026-10-26
 
 ### Changed
