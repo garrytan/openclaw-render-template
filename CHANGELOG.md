@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.38] - 2026-10-27
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.145 to 0.10.148 (`3a63cae6c13d11c0c561826ae7825115e24cd00a`). OpenClaw stays on 2026.10.8, so the deploy is a same-version restart with no Doctor migration. The release brings honest "back" and "upgrading" notices with the Doctor startup trace (#286), an env reload that produces what boot would so platform-set values survive (#287), and a Doctor summary line on every run (#288).
+
 ## [2.0.0.37] - 2026-10-27
 
 ### Changed
