@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.37] - 2026-10-27
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.144 to 0.10.145 (`6d7908191959b2a7ab6f47c7c200a67b9a6af052`), which moves the exact OpenClaw pin from 2026.10.7 to **2026.10.8**. There is no schema migration (state 20, agent 25 unchanged), and 2026.10.7 boots on state written by 2026.10.8, so rolling back is a plain pin revert.
+
 ## [2.0.0.36] - 2026-10-26
 
 ### Changed
