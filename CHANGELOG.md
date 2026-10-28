@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.39] - 2026-10-28
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.148 to 0.10.150 (`cf6e8bba3d805c3bbf69f8210129790bff1d0e32`). OpenClaw stays on 2026.10.8, so the deploy is a same-version restart. The release reports correct sizes for agent databases that belong to no configured agent (#289) and routes Delete Agent through OpenClaw's agents.delete with a verified snapshot kept first (#290).
+
 ## [2.0.0.38] - 2026-10-27
 
 ### Changed
