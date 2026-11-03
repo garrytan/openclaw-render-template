@@ -4,6 +4,92 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.39] - 2026-10-28
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.148 to 0.10.150 (`cf6e8bba3d805c3bbf69f8210129790bff1d0e32`). OpenClaw stays on 2026.10.8, so the deploy is a same-version restart. The release reports correct sizes for agent databases that belong to no configured agent (#289) and routes Delete Agent through OpenClaw's agents.delete with a verified snapshot kept first (#290).
+
+## [2.0.0.38] - 2026-10-27
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.145 to 0.10.148 (`3a63cae6c13d11c0c561826ae7825115e24cd00a`). OpenClaw stays on 2026.10.8, so the deploy is a same-version restart with no Doctor migration. The release brings honest "back" and "upgrading" notices with the Doctor startup trace (#286), an env reload that produces what boot would so platform-set values survive (#287), and a Doctor summary line on every run (#288).
+
+## [2.0.0.37] - 2026-10-27
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.144 to 0.10.145 (`6d7908191959b2a7ab6f47c7c200a67b9a6af052`), which moves the exact OpenClaw pin from 2026.10.7 to **2026.10.8**. There is no schema migration (state 20, agent 25 unchanged), and 2026.10.7 boots on state written by 2026.10.8, so rolling back is a plain pin revert.
+
+## [2.0.0.36] - 2026-10-26
+
+### Changed
+- The image's baked Bun (`/usr/local/bin/{bun,bunx}`) moves from 1.4.2 to 1.4.4, the version Wintermute's gbrain processes run (1.4.4 fixes the #7644 memory leak). Each redeploy had been putting the box's servers that use the image's bun back on 1.4.2.
+
+## [2.0.0.35] - 2026-10-26
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.140 to 0.10.144 (`25f6ecc15ffb157a4a24308690800dc57e5357f4`). 0.10.141: the hourly sync cron.d job now carries TMPDIR, TMP and TEMP, so its scratch files land on the disk instead of the container's /tmp. 0.10.142: a model check (Models tab, `POST /api/models/check`) tests each configured model ref, and a `model_not_found` failure now tells the owner which model failed, what the provider answered, and the fix. 0.10.143: OpenClaw's file log moves from /tmp/openclaw to <root>/logs/openclaw on the disk. 0.10.144: the deploy-shutdown ask reserves time for OpenClaw to close slow-exiting stdio MCP servers, so they no longer push the shutdown into SIGKILL. OpenClaw stays at 2026.10.7.
+- `start.sh` writes TMPDIR, TEMP and TMP (`/data/tmp`) to `/etc/environment` at boot, so every root crontab job gets them through pam_env too.
+
+## [2.0.0.34] - 2026-10-26
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.139 to 0.10.140 (`430157e822af3a1e0006a0616edace3c62ccd3f2`): on a platform SIGTERM, AlphaClaw asks OpenClaw for a drain sized to the time left in `ALPHACLAW_SHUTDOWN_GRACE_SECONDS` (default 25 s, inside Render's default 30 s shutdown delay) and SIGKILLs the gateway only at that deadline, instead of a fixed 6 s slice. OpenClaw stays at 2026.10.7.
+
+## [2.0.0.33] - 2026-10-26
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.137 to 0.10.139 (`fae0a5b4f388fc41cac0c5470942d1dbca6a8b7e`): restart history (20 boots or 14 days) with each boot's cause, including unclean exits such as a platform instance replacement (0.10.138), and the boot's Codex migration and plugin reconciliation run once per OpenClaw build instead of on every boot, with a redacted summary of their diagnostics (0.10.139). OpenClaw stays at 2026.10.7.
+
+## [2.0.0.32] - 2026-10-26
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.136 to 0.10.137 (`6a08099e44496d9f6987a5cbdbfc43cf5498afb8`): after a predecessor gateway was SIGKILLed in another container, the watchdog relaunches when OpenClaw's ownership heartbeat lapses (about 90 s) instead of waiting out the 300 s lease, and the boot shows a `lock_wait` step instead of failing. This ships with 2.0.0.31's graceful-stop fix: the first deploy replaces a container whose old start.sh still SIGKILLs the gateway, so the new container must be the one that handles the stale heartbeat. OpenClaw stays at 2026.10.7.
+
+## [2.0.0.31] - 2026-10-26
+
+### Fixed
+- **Graceful shutdown on deploy.** `start.sh` now traps TERM/INT, forwards the signal to the running child (alphaclaw, the failure server or a backoff sleep), waits for it and exits with its code. The child runs under `setsid` in its own process group, so it gets exactly one TERM: `tini -g` already signals `start.sh`'s group, and a second TERM makes alphaclaw abandon its drain and SIGKILL the gateway. Before, bash died on the TERM that `tini -g` sends the whole group, tini exited with it, and the container ended before alphaclaw's graceful exit ran: no SIGTERM notice, no `/data/deploy-history.json` record (so no measured downtime on the next boot) and no gateway drain. The tee writing `/data/start.log` ignores TERM/INT so the last lines land, and gets 3 s to drain after the child exits so a descendant holding the output can't keep the container alive. `tini -g` is unchanged.
+
+### Tests
+- `supervise.bats`: a group TERM (what `tini -g` sends) reaches alphaclaw exactly once, TERM is forwarded and waited for, the exit code passes through, TERM during a backoff exits at once, and a lingering output holder can't block exit (all four fail on the old script). `scripts.bats` pins the trap wiring. New `tests/e2e/graceful-stop.bats` boots the image with a live gateway: SIGKILLed gateway and alphaclaw still recover inside the container, `docker stop -t 30` runs alphaclaw's shutdown (log lines, deploy-history record, a gateway stop that finishes without the hard kill), and the next boot measures the downtime.
+
+## [2.0.0.30] - 2026-10-26
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.134 to 0.10.136 (`95edebe279765f53c9cf963beba8e888886b0b54`): one-key env PATCH with a delete count in the PUT confirm (0.10.135), and the alphaclaw-admin skill split into a short index plus one reference file per domain (0.10.136). OpenClaw stays at 2026.10.7; no template runtime changes.
+
+## [2.0.0.29] - 2026-10-26
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.112 to 0.10.134 (`aca7e6643bab3ab3e928c2498776e463ee759493`): read-only box status views (processes, restart, schedules, disk, MCP) and the Watchdog Box card, honoring the operator box lock, operator sidecars, deploy announcements with measured downtime, an agent downtime note after outages, copy retention for backups and update captures, single-document `--json` CLI output, consistent agent git rules with a writer set, and git sync fixes for a symlinked state dir. OpenClaw stays at 2026.10.7; no template runtime changes.
+
+## [2.0.0.28] - 2026-10-25
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.110 to 0.10.112 (`ba9f2bc7eb80265a00119c608733ba6c3765635e`): `ALPHACLAW_GIT_SYNC=off` turns AlphaClaw's git sync off for a repository another writer owns (0.10.111), and the abandoned OpenClaw SQLite snapshot sweep now also runs every 30 minutes while the gateway runs (0.10.112). OpenClaw stays at 2026.10.7; no template runtime changes.
+
+## [2.0.0.27] - 2026-10-25
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.75 to 0.10.110 (`1ff3c8581f8110e36606e73099d9114c4b0e2e24`), bringing OpenClaw 2026.10.7. Highlights for this deploy: orphaned OpenClaw read-only SQLite copies are swept before each gateway launch (#245), a free-disk alert and disk-full notices (#247, #250), and the git-sync and watchdog fixes since 0.10.75. No template runtime changes: the Node `>=24.22.1 <25 || >=26.12.1` gate and the `node:24-slim` base are unchanged.
+
+## [2.0.0.26] - 2026-10-23
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.68 to 0.10.75 (`b6405c1e02a17c56e2398503f6633d28350e6b10`), the ALPH-22 memory-watchdog series written against the critique the deployed agent produced on a 100 GB host. `leak_critical` now judges a leak rather than load: on the verified gateway worker, held for three consecutive fresh evaluations, it needs a positive RSS slope, a real floor (worker private memory at 90% of the budget or the V8 heap at 70% of its limit) and a heap signal, so a burst of real work with many tool children stays a warning (0.10.71). With no operator budget the budget is 75% of min(container limit, host MemTotal) instead of configured heap + 192 MiB, which on that host moves it from 8.4 GB to 76.8 GB (0.10.72). An automatic memory restart needs a `restartAuthority` (heap at 85% of its V8 limit, the worker itself filling the container at 90%, or the operator's own budget); critical alone records one `mitigation_skipped` per episode and leaves the gateway alone (0.10.73). Notifications collapse to one message per episode tier after a five-minute hold, with a combined "spiked and recovered" message and a cleared follow-up, and the brake notice no longer advises a manual restart (0.10.74). The PSS sampler keeps its cached sample when the rescue session reads Resources without naming the gateway, which had been restarting collection every other tick (0.10.75). 0.10.69–0.10.70 are test-only. No runtime changes for the template: OpenClaw stays pinned at exactly 2026.10.6; the Node `>=24.22.1 <25 || >=26.12.1` gate and the `node:24-slim` base are unchanged.
+
+## [2.0.0.25] - 2026-10-22
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.7 to 0.10.68 (`2269d88afa15401045f3898b5099241d32e1c873`), 61 upstream releases. The one that touches the runtime contract is 0.10.48, which moves the exact OpenClaw pin from 2026.10.4 to **2026.10.6** (the stability patch for the 2026.10.5 line: recovery for held agent/system-agent databases after schema-changing upgrades, frozen startup owners) and raises the Node floor to `>=24.22.1 <25 || >=26.12.1` because 2026.10.6 requires the October 2026 Node security releases and exits 1 on anything older; alphaclaw's new `preinstall` check (0.10.12) refuses to install on such a runtime. The pin's agent schema moves 24 → 25 (state stays 20) and the upgrade is one-way: 2026.10.4 refuses the migrated state, so rolling back means restoring the pre-upgrade backup. The rest of the range: the ALPH-17/19 restart series (routine restarts let OpenClaw finish active work for up to 3 minutes with a Restart now override, every restart names its source and reason, a tool child can no longer make the gateway look like it is leaking, a post-relaunch wedge sweep resumes or alerts on stuck sessions, interrupted exec turns are resumed or reported to the owner, a cold restart always relaunches); the Control UI at `/openclaw` connects on every hostname instead of only the boot-time origin (0.10.14, which was breaking Render custom domains) and a signed-in admin can open it directly (0.10.15); team access enables again on OpenClaw 2026.10 (0.10.64) and a team transition no longer cuts off the running turn (0.10.66); constant-time secret comparisons everywhere (0.10.18); container memory pressure judged on the cgroup working set rather than page cache (0.10.19); GPT-6 under Codex OAuth and Claude 5.5 defaults in the model catalog (0.10.10); the installed-vs-pinned OpenClaw visible on status, General and Doctor (0.10.27); honest boot status with real stages and times (0.10.8); and the ALPH-15 refactor series (0.10.21–0.10.47, no behavior changes beyond the overseer dropping its "rollback" offer).
+- `package.json` `engines.node` moves with the pin to `>=24.22.1 <25 || >=26.12.1`. The `node:24-slim` base already resolves to 24.22.1, so the image clears the new floor without a Dockerfile change; the base-image contract test's comment names the new gate.
+- CI: `actions/setup-node` sets `check-latest: true` so the unit/contract job resolves the newest 24.x instead of a runner-cached Node that can sit below the floor the template now declares.
+
+## [2.0.0.24] - 2026-10-16
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.5 to 0.10.7 (`a297ae4941f10acd373e35dc6edfdd3f741c56b5`), which moves its exact OpenClaw pin from 2026.10.2 to **2026.10.4** (Doctor data-preservation fixes, gateway ownership that survives sleep and clock jumps, bounded shutdown waits; state schemas unchanged at `{ state: 20, agent: 24 }`). 0.10.6 fixes alphaclaw #144, which hits this image directly: OpenClaw 2026.10's atomic file writer refuses a parent directory that is a symlink, so on a symlinked state directory every `doctor --fix` and CLI config write failed with "Atomic replace parent must be a real directory", and since every pin bump reruns Doctor on boot, each 2026.10.x deploy started with a failed migration. alphaclaw now resolves only `OPENCLAW_CONFIG_PATH` to the symlink's target while `OPENCLAW_STATE_DIR` stays lexical. It also stops booking a slow gateway boot as an incident, records every Doctor run's outcome, and remembers deterministic boot-Doctor failures for 24 h instead of re-running them. 0.10.7 gives the data upgrade a home on the dashboard: an alert under the Gateway card while the installed pin's `doctor --fix` is unfinished, a Retry upgrade action that runs Doctor between stop and relaunch without restarting alphaclaw, an Enable snapshots action (`chmod +t` on exactly the directories OpenClaw's pre-repair snapshot check refuses), and a redacted Doctor transcript. No runtime changes for the template: the Node `>=24.16.0 <25 || >=26.1.0` gate and the `node:24-slim` base are unchanged.
+
 ## [2.0.0.23] - 2026-10-13
 
 ### Changed

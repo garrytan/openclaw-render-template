@@ -273,3 +273,100 @@ STUB
   wait_for_log "invalid RAPID_WINDOW_SECS" 20
   grep -q "using default 60" "$T/start.log"
 }
+
+# Graceful stop: tini exits as soon as start.sh exits, so start.sh must wait
+# for alphaclaw's own shutdown and keep its last lines in the log.
+make_graceful_stub() { # <exit code after TERM> [linger: leave a child holding stdout]
+  cat >"$T/graceful-alphaclaw" <<STUB
+#!/bin/bash
+n=\$(cat "$T/count" 2>/dev/null || echo 0); echo \$((n+1)) >"$T/count"
+on_term() { echo "stub: got TERM, shutting down"; [ "$2" = linger ] || kill "\$!"; sleep 1; echo "stub: final line"; exit $1; }
+trap on_term TERM
+echo "stub: up"
+sleep 300 &
+wait
+STUB
+  chmod +x "$T/graceful-alphaclaw"
+}
+
+@test "TERM is forwarded to alphaclaw, start.sh waits for its shutdown and exits with its code" {
+  make_graceful_stub 0
+  run_supervisor ALPHACLAW_BIN="$T/graceful-alphaclaw"
+  wait_for_log "stub: up" 20
+  kill -TERM "$SUP_PID"
+  EC=0; wait "$SUP_PID" || EC=$?
+  SUP_PID=""
+  [ "$EC" -eq 0 ]
+  grep -q "stub: got TERM, shutting down" "$T/start.log"
+  grep -q "stub: final line" "$T/start.log"
+  grep -q "received SIGTERM; supervisor exiting with code 0" "$T/start.log"
+  [ "$(cat "$T/count")" -eq 1 ]
+}
+
+@test "a TERM to the whole group (tini -g) reaches alphaclaw exactly once" {
+  # Node, like alphaclaw: every delivery runs the handler (bash would coalesce).
+  cat >"$T/count-term-alphaclaw" <<STUB
+#!$(command -v node)
+const fs = require("fs");
+process.on("SIGTERM", () => {
+  fs.appendFileSync("$T/terms", "TERM\n");
+  setTimeout(() => { console.log("stub: final line"); process.exit(0); }, 1000);
+});
+console.log("stub: up");
+setInterval(() => {}, 1000);
+STUB
+  chmod +x "$T/count-term-alphaclaw"
+  env STUB_DIR="$T" ALPHACLAW_BIN="$T/count-term-alphaclaw" \
+    FAILURE_SERVER="$T/stub-failure-server.js" NODE_BIN="$(command -v node)" \
+    LOGFILE="$T/start.log" ORPHAN_SWEEP_PATTERN="$TAG" \
+    BACKOFF_STEP_SECS=0 SPIN_BRAKE_SECS=0 \
+    setsid bash "$REPO/start.sh" >"$T/stdout.log" 2>&1 3>&- &
+  SUP_PID=$!
+  wait_for_log "stub: up" 20
+  [ "$(ps -o pgid= -p "$SUP_PID" | tr -d ' ')" = "$SUP_PID" ]
+  kill -TERM -- "-$SUP_PID"
+  EC=0; wait "$SUP_PID" || EC=$?
+  SUP_PID=""
+  [ "$EC" -eq 0 ]
+  grep -q "stub: final line" "$T/start.log"
+  [ "$(wc -l <"$T/terms")" -eq 1 ]
+}
+
+@test "start.sh exits with alphaclaw's own code after TERM" {
+  make_graceful_stub 3
+  run_supervisor ALPHACLAW_BIN="$T/graceful-alphaclaw"
+  wait_for_log "stub: up" 20
+  kill -TERM "$SUP_PID"
+  EC=0; wait "$SUP_PID" || EC=$?
+  SUP_PID=""
+  [ "$EC" -eq 3 ]
+  grep -q "stub: final line" "$T/start.log"
+  [ "$(cat "$T/count")" -eq 1 ]
+}
+
+@test "TERM during a backoff exits at once without relaunching" {
+  printf '1 0\n0 300\n' >"$T/scenario"
+  run_supervisor BACKOFF_STEP_SECS=30
+  wait_for_log "backing off" 20
+  START=$(date +%s)
+  kill -TERM "$SUP_PID"
+  EC=0; wait "$SUP_PID" || EC=$?
+  SUP_PID=""
+  [ "$EC" -eq 0 ]
+  [ $(( $(date +%s) - START )) -lt 5 ]
+  [ "$(cat "$T/count")" -eq 1 ]
+}
+
+
+@test "a descendant still holding alphaclaw's output does not keep start.sh alive" {
+  make_graceful_stub 0 linger
+  run_supervisor ALPHACLAW_BIN="$T/graceful-alphaclaw"
+  wait_for_log "stub: up" 20
+  START=$(date +%s)
+  kill -TERM "$SUP_PID"
+  EC=0; wait "$SUP_PID" || EC=$?
+  SUP_PID=""
+  [ "$EC" -eq 0 ]
+  [ $(( $(date +%s) - START )) -lt 8 ]
+  grep -q "stub: final line" "$T/start.log"
+}
