@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.40] - 2026-11-03
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.158 to 0.10.163 (`6197f2c78b0a03b272df30476d24db71cba6ab5a`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. The release slims AlphaClaw's injected bootstrap files and respects an operator's reference opt-out (#309, GST-175), shows the measured per-turn context in Doctor (#308, GST-176), and defaults Particle to high thinking (#307, GST-121).
+
 ## [2.0.0.39] - 2026-10-28
 
 ### Changed
