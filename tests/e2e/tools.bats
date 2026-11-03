@@ -59,7 +59,7 @@ setup_file() {
   # shellcheck disable=SC1091
   . "$REPO/baked-tools.env"
   set +a
-  for k in CADDY_VERSION TAILSCALE_VERSION BUN_VERSION MONOLITH_VERSION PG_MAJOR; do
+  for k in CADDY_VERSION TAILSCALE_VERSION BUN_VERSION GH_VERSION MONOLITH_VERSION PG_MAJOR; do
     [ -n "${!k}" ] || { echo "baked-tools.env is missing $k" >&2; return 1; }
   done
   ARCH="$(docker run --rm "$IMAGE" dpkg --print-architecture)"
@@ -145,6 +145,14 @@ teardown_file() {
   run offline "bun -e 'console.log(6*7)'"
   [ "$status" -eq 0 ]
   [ "$output" = "42" ]
+}
+
+@test "gh: pinned version, on PATH at /usr/local/bin/gh, runs offline" {
+  run offline 'gh --version | head -n1'
+  [ "$status" -eq 0 ]
+  [ "$(cut -d' ' -f3 <<<"$output")" = "$GH_VERSION" ]
+  run offline 'command -v gh'
+  [ "$output" = "/usr/local/bin/gh" ]
 }
 
 @test "monolith: pinned version, archives a local page offline" {
@@ -235,7 +243,7 @@ teardown_file() {
     amd64:x86_64|arm64:aarch64) ;;
     *) echo "arch mismatch: dpkg=$ARCH uname=$output"; false ;;
   esac
-  for bin in /usr/local/bin/bun /usr/local/bin/monolith /usr/local/bin/caddy /usr/local/bin/tailscale \
+  for bin in /usr/local/bin/bun /usr/local/bin/monolith /usr/local/bin/caddy /usr/local/bin/gh /usr/local/bin/tailscale \
              /usr/local/bin/tailscaled "/usr/lib/postgresql/${PG_MAJOR}/bin/psql" \
              "/usr/lib/postgresql/${PG_MAJOR}/bin/pg_dump" "/usr/lib/postgresql/${PG_MAJOR}/bin/pg_restore" \
              /usr/bin/git-lfs /usr/bin/jq; do
