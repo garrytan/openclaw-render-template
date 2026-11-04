@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [2.0.0.41] - 2026-11-04
 
 ### Changed
-- Updated the bundled alphaclaw from 0.10.163 to 0.10.165 (`a3f35d0ba8e4f4ebd09b4bfc6401a6008b657e76`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. The release writes .env values that need it in shell-safe quotes, and reads both quoted and bare forms, so `set -a; . .env` loads every key (#312, GST-1356). It also carries the /ship CI-carry change (#310).
+- Updated the bundled alphaclaw from 0.10.163 to 0.10.166 (`62a0cafc58b22e37ca5e0dce6115315c30770ee9`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. AlphaClaw now quotes .env values that need it for bash, so `set -a; . .env` loads every key, and reads both quoted and bare forms (#312, GST-1356). Values made only of characters a bash assignment takes literally (including ? * ! [ ] ^ { } and non-ASCII) stay bare, so scripts that read .env lines raw are unaffected (#313). It also carries the /ship CI-carry change (#310).
 
 ## [2.0.0.40] - 2026-11-03
 
