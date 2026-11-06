@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.42] - 2026-11-06
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.166 to 0.10.171 (`ac29fb540b5d3c67e8c4e844568c788430057363`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. The release adds the self-hosted Agent Relay: a sha256-pinned Relaycast engine runs as the `relay-engine` sidecar, on by default, and is turned off with `ALPHACLAW_RELAY=off` (#318). It also adds remote access for Capy threads through `/relay/mcp`, behind AlphaClaw's own OAuth with admin-only consent (#319). The git shim now maps paths through symlinked directories onto the physical repo, which ends the "outside repository" failures (#317). It also carries the CI test-inventory guard (#315) and a pregate allowlist (#320).
+
 ## [2.0.0.41] - 2026-11-04
 
 ### Changed
