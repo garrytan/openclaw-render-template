@@ -16,7 +16,7 @@
     "test:all": "npm run test && npm run test:e2e"
   },
   "dependencies": {
-    "alphaclaw": "git+https://github.com/garrytan/alphaclaw.git#3c3b46ed64d4d21fd682912d5a83125aeaf5afa4"
+    "alphaclaw": "git+https://github.com/garrytan/alphaclaw.git#b7e8452b714cacc02966adad015dd51eb47faab6"
   },
   "engines": {
     "node": ">=24.22.1 <25 || >=26.12.1"

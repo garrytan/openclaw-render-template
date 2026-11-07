@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.48] - 2026-11-07
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.191 to 0.10.195 (`b7e8452b714cacc02966adad015dd51eb47faab6`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. This release:
+  - rebuilds Setup UI Home as a status page and gives Channels and Integrations pages of their own (#344);
+  - adds a Content Security Policy and frame denial to the Setup UI pages, same-origin checks on cookie writes, WebSocket upgrades and OAuth starts, and a WebSocket path allowlist for the gateway (#343);
+  - signs owner sessions with a random secret and a session epoch so logout ends them, closes terminal and chat sockets on logout, puts admin invites and member changes behind an operator confirm, and stops the /oauth alias forwarding `source` (#342).
+
 ## [2.0.0.47] - 2026-11-07
 
 ### Changed
