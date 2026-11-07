@@ -208,6 +208,16 @@ teardown_file() {
   grep -qi 'psmisc' <<<"$output"
 }
 
+@test "PDF tools and CJK fonts: pdftotext, pdfinfo and Noto Sans CJK work offline" {
+  run offline 'pdftotext -v 2>&1 && pdfinfo -v 2>&1'
+  [ "$status" -eq 0 ]
+  grep -q 'pdftotext version' <<<"$output"
+  grep -q 'pdfinfo version' <<<"$output"
+  run offline 'fc-list :lang=ja family'
+  [ "$status" -eq 0 ]
+  grep -qF 'Noto Sans CJK JP' <<<"$output"
+}
+
 @test "retained utilities: the original toolset is still present and tmux runs" {
   run offline 'for b in git curl python3 make g++ cron vim screen node npm claude openclaw alphaclaw; do command -v "$b" >/dev/null || { echo "missing $b"; exit 1; }; done; tmux -V'
   [ "$status" -eq 0 ]

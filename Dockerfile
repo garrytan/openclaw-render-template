@@ -22,6 +22,7 @@
 #  │ 1 apt line (git curl … tmux)                UNCHANGED             │  │
 #  │ 2 NEW apt/PGDG RUN (reads /pg.env): ca-certificates openssl gpg   │  │
 #  │   jq git-lfs psmisc util-linux; PGDG key fingerprint check;       │  │
+#  │   poppler-utils fontconfig fonts-noto-cjk (PDF text, CJK fonts);  │  │
 #  │   postgresql-client-$PG_MAJOR (client only);                      │  │
 #  │   purge gpg; git lfs install --system; smoke   (ABOVE npm layers: │  │
 #  │   alphaclaw pin bumps never re-fetch apt or move the PG minor)    │  │
@@ -104,6 +105,9 @@ RUN apt-get update && apt-get install -y git curl procps python3 make g++ cron t
 # must not re-fetch apt indexes or move the PostgreSQL minor; editing this RUN is
 # rare and costs a rebuild of the pinned claude-code layer and the bounded app
 # `npm install` (the same trade-off the apt line above already accepts).
+# poppler-utils (pdftotext, pdfinfo) and fonts-noto-cjk (with fontconfig for
+# fc-list/fc-cache) were runtime installs in the agent's daily doctor, so every
+# redeploy dropped them until the doctor ran again; the PDF archive jobs need them.
 # The PGDG key is verified by fingerprint (exactly one primary key, and it must be
 # the pinned one) before apt ever sees it. TMPDIR is unset at this point, so the
 # scratch dir lands in the build container's ephemeral temp (no literal path here;
@@ -112,7 +116,7 @@ COPY --from=pins /pg.env /opt/pg.env
 RUN set -eu; \
     . /opt/pg.env; \
     apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates openssl gpg jq git-lfs psmisc util-linux; \
+    apt-get install -y --no-install-recommends ca-certificates openssl gpg jq git-lfs psmisc util-linux poppler-utils fontconfig fonts-noto-cjk; \
     scratch="$(mktemp -d)"; \
     curl -fsSL --retry 5 --retry-all-errors --retry-max-time 180 --connect-timeout 20 -o "$scratch/pgdg.asc" https://www.postgresql.org/media/keys/ACCC4CF8.asc; \
     listing="$(GNUPGHOME="$scratch" gpg --batch --show-keys --with-colons "$scratch/pgdg.asc")"; \
@@ -131,6 +135,8 @@ RUN set -eu; \
     pg_restore --version | grep -qF "(PostgreSQL) ${PG_MAJOR}."; \
     test -x "/usr/lib/postgresql/${PG_MAJOR}/bin/psql"; \
     jq --version; git lfs version; flock --version; fuser -V; openssl version; \
+    pdftotext -v; pdfinfo -v; \
+    fc-list :lang=ja family | grep -qF "Noto Sans CJK JP"; \
     test -s /etc/ssl/certs/ca-certificates.crt
 
 # Pinned exactly, same discipline as the alphaclaw SHA pin: an unpinned

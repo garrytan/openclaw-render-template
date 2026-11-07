@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.43] - 2026-11-07
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.171 to 0.10.175 (`ce9e5f6385936a3b7401df3fb6809507b1424485`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. This release:
+  - lets #/chat list and open every conversation on the box, including Telegram DMs, groups, topics and Agent Relay sessions, read-only where the chat isn't the operator's (#322);
+  - gives every Control UI tab its own gateway token (#324);
+  - shows Agent Relay conversations on the Relay page with both sides and posts one reply per relay message. Relay replies no longer mask the product name as `***` (#323).
+  - It also carries the Setup UI phase 0 polish (#321).
+
+### Added
+- The image now bakes `poppler-utils` (`pdftotext`, `pdfinfo`), `fontconfig` and `fonts-noto-cjk` in the support-package apt RUN. The build fails unless `pdftotext -v` and `pdfinfo -v` run and `fc-list :lang=ja` lists Noto Sans CJK JP. The agent's daily doctor used to install them at runtime, so every redeploy dropped them until it ran again, and the monthly PDF archive job depends on `pdftotext`. A new e2e case checks them offline.
+
 ## [2.0.0.42] - 2026-11-06
 
 ### Changed
