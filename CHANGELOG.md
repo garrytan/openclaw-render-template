@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.44] - 2026-11-07
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.175 to 0.10.180 (`1c76edf2516ace3a16542531e5fa41bdc41431ab`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. The release carries two security fixes. The unauthenticated `/hooks/gmail` path no longer grows memory on junk requests: gmail dedupe runs only after the gateway accepts a request and is capped, and rejected unknown hooks write no log rows (#330). The Setup UI file viewer renders markdown previews through the safe renderer, closing a stored XSS (#329). It also carries Setup UI design tokens and polish (#326, #325) and two hermetic test-flake fixes (#328).
+
 ## [2.0.0.43] - 2026-11-07
 
 ### Changed
