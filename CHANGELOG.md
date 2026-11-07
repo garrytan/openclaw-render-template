@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.47] - 2026-11-07
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.189 to 0.10.191 (`3c3b46ed64d4d21fd682912d5a83125aeaf5afa4`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. This release:
+  - groups the Setup UI sidebar, renames pages with redirects from the old hashes, and adds a status chip and page headers (#341);
+  - makes relay sessions messaging-only, binds replies to the conversation's participant, caps bindings per client and hashes client secrets (#336).
+
 ## [2.0.0.46] - 2026-11-07
 
 ### Changed
