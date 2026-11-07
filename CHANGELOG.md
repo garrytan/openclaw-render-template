@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.46] - 2026-11-07
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.183 to 0.10.189 (`ee8a2298ffadab68eda3da08ece837dedb396976`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. This release:
+  - accepts hook ingress by POST only, adds an allowlist and a rate limit to `/oauth`, and redacts headers by name (#333);
+  - makes the `/oauth/:id` callback alias forward the provider's own params (oauth_verifier, realmId, shop and the rest), stripping only message, wakeMode and name (#339);
+  - has the relay brain archive look for the gbrain wrapper on every availability check, and keeps `ALPHACLAW_RELAY_BRAIN=off` fully idle (#337);
+  - carries Setup UI Phase 1: a single route table for hash routes (#335), the system sans for interface text with self-hosted JetBrains Mono for data, a type scale and a phone-width fix (#338), and accessible dialogs, tabs and focus ring, with form controls on the 3:1 field border (#334).
+
 ## [2.0.0.45] - 2026-11-07
 
 ### Changed
