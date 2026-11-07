@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.45] - 2026-11-07
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.180 to 0.10.183 (`8bd0a6d69a0fa29b870080f61bdc30f99ba11c83`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. Relay conversations now open in Chat with a relay log, and the Chat sidebar gains Relays and Channels sections; #/relay rows link into Chat (#331). The relay brain archive ships (#327): it saves each relay conversation as a gbrain page in the `relay` source, but only once that source exists and is not federated. AlphaClaw never creates the source, so on a box without it the archive stays idle and the Relay page shows "Not set up". It also carries Setup UI design tokens and input-border contrast fixes (#332).
+
 ## [2.0.0.44] - 2026-11-07
 
 ### Changed
