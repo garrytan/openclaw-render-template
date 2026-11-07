@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.49] - 2026-11-07
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.195 to 0.10.200 (`b8acd91fadca7f75324701dfc09fc8e3d6ca6f68`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. This release:
+  - rebuilds the Setup UI Health, Doctor, Schedules and Usage pages (#346);
+  - makes five platform tokens deployment-only and lets the deployment value of `SETUP_PASSWORD` and `GOG_KEYRING_PASSWORD` win over `.env`, and relay messages mask them (#347);
+  - closes proxied `/openclaw` sockets on logout, admin demote, disable, remove and team-off (#348);
+  - adds Copy new link for pending team invites (#349);
+  - states the git-sync overflow size in whole MB (#350).
+
 ## [2.0.0.48] - 2026-11-07
 
 ### Changed
