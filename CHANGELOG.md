@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.51] - 2026-11-08
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.210 to 0.10.215 (`cdfb9fc6fc82615cbd3254e109329869a18828bc`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. This release:
+  - stops regular OpenClaw compactions from looking like a memory leak: the memory budget waits 15 minutes before a restart unless the worker would fill the container within 5 (#361);
+  - lets operators lock env keys such as a plugin's kill switch with `ALPHACLAW_GATEWAY_LOCKED_ENV`, so the agent can't change them (#363);
+  - watches `/tmp`, tells the owner who is filling it and, on Render, clears room before the 2 GB limit replaces the instance; the gateway's SQLite temp files move to the data volume (#362);
+  - makes the fast-leak memory check count the whole container and keeps the 15-minute budget wait through a short dip; an almost flat worker no longer makes the check throw and skip a minute (#365);
+  - shows how many days are left before the disk fills on Health (#364).
+- AGENTS.md no longer says code that hardcodes `/tmp` is fine: on Render, 2 GB of `/tmp` replaces the instance, so anything large belongs under `$TMPDIR`.
+
 ## [2.0.0.50] - 2026-11-08
 
 ### Changed
