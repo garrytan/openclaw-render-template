@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.50] - 2026-11-08
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.200 to 0.10.210 (`c69ec532ed5408152dd7f146ef795fcbc4fecc13`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. This release:
+  - gives the Google Workspace CLI only the environment it needs (#351) and keeps secrets written in `.env` out of OpenClaw's gateway and workers (#352);
+  - groups API keys by provider on Models & keys and gives agent pages tabs (#353);
+  - checks scheme and port, not just the host, when deciding a request came from the dashboard (#355);
+  - closes a gateway crash incident as recovered once a restart brings the gateway back (#356), and counts only the files Drift Doctor reviews in Home's drift reminder (#357);
+  - stops the model check from calling a built-in provider without a baseUrl misconfigured (#359);
+  - lets the owner sign in during a login attack, and blocks and logs sign-ins by address (#358);
+  - gives the setup, Gmail and Telegram wizards one step indicator (#360);
+  - runs fewer gateway worker threads on many-CPU Linux hosts, about 0.7 GB less memory (#354).
+
 ## [2.0.0.49] - 2026-11-07
 
 ### Changed
