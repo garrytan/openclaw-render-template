@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.52] - 2026-11-09
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.215 to 0.10.225 (`9a0d13a960eaa9593201499ff11fa110a6bc053a`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. This release:
+  - lets chosen Capy threads act as the owner through Agent Relay when they are listed in `ALPHACLAW_RELAY_DELEGATE_AGENTS`; every other relay agent stays messaging-only (#376);
+  - gives the gateway one heap flag when `ALPHACLAW_GATEWAY_MAX_OLD_SPACE_SIZE` is set, instead of two (#370);
+  - reports a gateway SIGKILL as out of memory only when the kernel OOM counter rose (#375);
+  - evicts `/tmp` at the eviction line even when the alert line is set higher (#369), and only removes temporary files a config save created itself (#368);
+  - opens the Relay page with a one-sentence status and plain rows (#367), and tidies the dashboard on phones and in the Channels, Telegram topics and Browse pages (#371-#374).
+
 ## [2.0.0.51] - 2026-11-08
 
 ### Changed
