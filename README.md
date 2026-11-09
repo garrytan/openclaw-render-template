@@ -191,6 +191,7 @@ The image ships a fixed set of operator/agent tools so they survive redeploys in
 | PostgreSQL client                                                        | 17              | PGDG signed apt repo                                         | apt signature + key fingerprint     | `/usr/lib/postgresql/17/bin` (+ `/usr/bin` via `pg_wrapper`)      | PostgreSQL   |
 | git-lfs, jq, openssl, ca-certificates, flock (util-linux), fuser (psmisc) | Debian bookworm | Debian bookworm apt                                          | apt signatures                      | `/usr/bin`, `/bin`                                                | see Debian   |
 | pdftotext, pdfinfo (poppler-utils), fontconfig, Noto CJK fonts (fonts-noto-cjk) | Debian bookworm | Debian bookworm apt | apt signatures | `/usr/bin`, `/usr/share/fonts/opentype/noto` | see Debian |
+| ffmpeg, ffprobe (ffmpeg) | Debian bookworm (5.1) | Debian bookworm apt | apt signatures | `/usr/bin` | LGPL-2.1+/GPL-2+ (see Debian) |
 
 **Nothing is auto-started.** Installing a tool does not enable it: the image launches no `tailscaled`, no `caddy`, opens no extra port and adds no cron job. A fresh deploy reaches the setup UI with no Tailscale or Caddy configuration. Gateway lifecycle stays with AlphaClaw.
 

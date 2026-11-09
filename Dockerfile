@@ -23,6 +23,7 @@
 #  │ 2 NEW apt/PGDG RUN (reads /pg.env): ca-certificates openssl gpg   │  │
 #  │   jq git-lfs psmisc util-linux; PGDG key fingerprint check;       │  │
 #  │   poppler-utils fontconfig fonts-noto-cjk (PDF text, CJK fonts);  │  │
+#  │   ffmpeg (ffmpeg, ffprobe: audio and video jobs);                 │  │
 #  │   postgresql-client-$PG_MAJOR (client only);                      │  │
 #  │   purge gpg; git lfs install --system; smoke   (ABOVE npm layers: │  │
 #  │   alphaclaw pin bumps never re-fetch apt or move the PG minor)    │  │
@@ -108,6 +109,9 @@ RUN apt-get update && apt-get install -y git curl procps python3 make g++ cron t
 # poppler-utils (pdftotext, pdfinfo) and fonts-noto-cjk (with fontconfig for
 # fc-list/fc-cache) were runtime installs in the agent's daily doctor, so every
 # redeploy dropped them until the doctor ran again; the PDF archive jobs need them.
+# ffmpeg (with ffprobe) was a hand install too: every redeploy dropped it, and the
+# agent's audio and video jobs failed until someone reinstalled it. The smoke encodes
+# one second of tone to MP3 and probes it back, so a broken ffmpeg fails the build.
 # The PGDG key is verified by fingerprint (exactly one primary key, and it must be
 # the pinned one) before apt ever sees it. TMPDIR is unset at this point, so the
 # scratch dir lands in the build container's ephemeral temp (no literal path here;
@@ -116,7 +120,7 @@ COPY --from=pins /pg.env /opt/pg.env
 RUN set -eu; \
     . /opt/pg.env; \
     apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates openssl gpg jq git-lfs psmisc util-linux poppler-utils fontconfig fonts-noto-cjk; \
+    apt-get install -y --no-install-recommends ca-certificates openssl gpg jq git-lfs psmisc util-linux poppler-utils fontconfig fonts-noto-cjk ffmpeg; \
     scratch="$(mktemp -d)"; \
     curl -fsSL --retry 5 --retry-all-errors --retry-max-time 180 --connect-timeout 20 -o "$scratch/pgdg.asc" https://www.postgresql.org/media/keys/ACCC4CF8.asc; \
     listing="$(GNUPGHOME="$scratch" gpg --batch --show-keys --with-colons "$scratch/pgdg.asc")"; \
@@ -136,6 +140,8 @@ RUN set -eu; \
     test -x "/usr/lib/postgresql/${PG_MAJOR}/bin/psql"; \
     jq --version; git lfs version; flock --version; fuser -V; openssl version; \
     pdftotext -v; pdfinfo -v; \
+    ffmpeg -hide_banner -version; ffprobe -hide_banner -version; \
+    ffmpeg -hide_banner -loglevel error -f lavfi -i sine=frequency=440:duration=1 -c:a libmp3lame -f mp3 - | ffprobe -v error -show_entries stream=codec_name -of csv=p=0 - | grep -qx mp3; \
     fc-list :lang=ja family | grep -qF "Noto Sans CJK JP"; \
     test -s /etc/ssl/certs/ca-certificates.crt
 

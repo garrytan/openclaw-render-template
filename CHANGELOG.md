@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.53] - 2026-11-09
+
+### Added
+- The image now ships ffmpeg and ffprobe (Debian bookworm's ffmpeg 5.1) from the support-package apt layer, so audio and video jobs keep working after every redeploy instead of failing until someone reinstalls ffmpeg by hand. The build fails if `ffmpeg -version` fails or if it cannot encode one second of tone to MP3 and probe it back. Cost: about 410 MB uncompressed (155 Debian packages), and the next deploy rebuilds the claude-code and app `npm install` layers once.
+
 ## [2.0.0.52] - 2026-11-09
 
 ### Changed

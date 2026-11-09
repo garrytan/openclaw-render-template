@@ -331,3 +331,14 @@ env_value() { sed -nE "s/^$1=(.*)$/\1/p" "$ENVF"; }
 @test "docs: AGENTS.md and CLAUDE.md are identical" {
   cmp -s "$REPO/AGENTS.md" "$REPO/CLAUDE.md"
 }
+
+@test "Dockerfile: ffmpeg is baked in the support apt RUN and smoked at build" {
+  # Wintermute's audio and video jobs shell out to ffmpeg/ffprobe; a hand install
+  # vanished on every redeploy (2026-11-09: the outdoor audio pull failed for hours).
+  final=$(final_text)
+  grep -qE '^[[:space:]]*apt-get install -y --no-install-recommends ca-certificates openssl gpg .* ffmpeg; \\$' <<<"$final"
+  grep -qF 'ffmpeg -hide_banner -version; ffprobe -hide_banner -version;' <<<"$final"
+  grep -qF '| grep -qx mp3;' <<<"$final"
+  # above the npm layers, like the rest of the support packages
+  [ "$(line_of 'fonts-noto-cjk ffmpeg; ')" -lt "$(line_of '^RUN npm install -g @anthropic-ai/claude-code@')" ]
+}

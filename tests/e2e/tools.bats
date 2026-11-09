@@ -218,6 +218,19 @@ teardown_file() {
   grep -qF 'Noto Sans CJK JP' <<<"$output"
 }
 
+@test "ffmpeg and ffprobe encode and probe audio offline" {
+  run offline 'ffmpeg -hide_banner -version | head -1; ffprobe -hide_banner -version | head -1'
+  [ "$status" -eq 0 ]
+  grep -q '^ffmpeg version ' <<<"$output"
+  grep -q '^ffprobe version ' <<<"$output"
+  for pair in libmp3lame:mp3 libopus:opus aac:aac; do
+    enc="${pair%%:*}" want="${pair##*:}"
+    run offline "d=\$(mktemp -d) && ffmpeg -hide_banner -loglevel error -f lavfi -i sine=frequency=440:duration=1 -c:a $enc \$d/a.mka && ffprobe -v error -show_entries stream=codec_name -of csv=p=0 \$d/a.mka"
+    [ "$status" -eq 0 ] || { echo "$enc encode failed: $output"; false; }
+    [ "$output" = "$want" ] || { echo "$enc probed as: $output"; false; }
+  done
+}
+
 @test "retained utilities: the original toolset is still present and tmux runs" {
   run offline 'for b in git curl python3 make g++ cron vim screen node npm claude openclaw alphaclaw; do command -v "$b" >/dev/null || { echo "missing $b"; exit 1; }; done; tmux -V'
   [ "$status" -eq 0 ]
@@ -248,7 +261,7 @@ teardown_file() {
   for bin in /usr/local/bin/bun /usr/local/bin/monolith /usr/local/bin/caddy /usr/local/bin/tailscale \
              /usr/local/bin/tailscaled "/usr/lib/postgresql/${PG_MAJOR}/bin/psql" \
              "/usr/lib/postgresql/${PG_MAJOR}/bin/pg_dump" "/usr/lib/postgresql/${PG_MAJOR}/bin/pg_restore" \
-             /usr/bin/git-lfs /usr/bin/jq; do
+             /usr/bin/git-lfs /usr/bin/jq /usr/bin/ffmpeg /usr/bin/ffprobe; do
     run offline "test -x $bin"
     [ "$status" -eq 0 ] || { echo "$bin is missing or not executable"; false; }
     run offline "ldd $bin 2>&1; true"
