@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.55] - 2026-11-09
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.228 to 0.10.231 (`64e6a95316c9c41a6dfddd284b996de2ae507595`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. This release:
+  - keeps OpenClaw's unpacked session archives on the data disk instead of /tmp, and lets the /tmp watch clear them and react to fast growth, so reading old sessions can no longer fill /tmp and get the instance replaced (#384);
+  - adds `/secret NAME` so the owner gets a one-time secret link straight from Telegram (#379);
+  - lets the owner set who the agent talks to in each Telegram group, and block people and groups (#382).
+
 ## [2.0.0.54] - 2026-11-09
 
 ### Changed
