@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.54] - 2026-11-09
+
+### Changed
+- Updated the bundled alphaclaw from 0.10.225 to 0.10.228 (`309fc676f87f342f71b56d4d2e6ce5ff9c604189`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. This release:
+  - lets a relay delegate receive the files and results it asked for without asking the owner again (#380);
+  - stops blaming a gateway relaunch for its predecessor's out-of-memory kill (#378);
+  - lets the agent ask the owner for a secret through a one-time AlphaClaw link instead of the chat (#377).
+
 ## [2.0.0.53] - 2026-11-09
 
 ### Added
