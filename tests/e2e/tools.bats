@@ -231,6 +231,38 @@ teardown_file() {
   done
 }
 
+@test "archive, search and database tools work offline" {
+  run offline 'set -e; d=$(mktemp -d); cd "$d"; printf "hello baked tools\n" > a.txt
+    zstd -q a.txt -o a.zst && zstd -dqc a.zst | grep -qx "hello baked tools"
+    xz -kc a.txt > a.xz && xz -dc a.xz | grep -qx "hello baked tools"
+    zip -q a.zip a.txt && mkdir x && unzip -q a.zip -d x && cmp a.txt x/a.txt
+    rg -q "baked" a.txt
+    sqlite3 db.sqlite "create table t(v); insert into t values (40),(2); select sum(v) from t;"'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$output" = "42" ]
+}
+
+@test "imagemagick converts PNG to JPEG offline and its policy still refuses PDF" {
+  run offline 'set -e; d=$(mktemp -d); convert -size 8x8 xc:red "$d/a.png" && convert "$d/a.png" "$d/a.jpg" && identify -format "%m" "$d/a.jpg"'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$output" = "JPEG" ]
+  # Debian's policy.xml forbids the PDF/PS coders (Ghostscript attack surface); keep it.
+  run offline 'd=$(mktemp -d); printf "%%PDF-1.4\n" > "$d/a.pdf"; convert "$d/a.pdf" "$d/a.png"'
+  [ "$status" -ne 0 ]
+  grep -qF 'not allowed by the security policy `PDF'"'" <<<"$output" || { echo "$output"; false; }
+}
+
+@test "Chrome's runtime libraries are installed and every shared object they ship resolves" {
+  run offline 'for p in libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1 libatspi2.0-0 libnss3 libnspr4 libgbm1 libxkbcommon0 libxrandr2 libasound2 libpango-1.0-0 libcairo2; do dpkg -s "$p" 2>/dev/null | grep -qx "Status: install ok installed" || echo "missing $p"; done'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || { echo "$output"; false; }
+  run offline 'for p in libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1 libatspi2.0-0 libnss3 libnspr4 libgbm1 libxkbcommon0 libxrandr2 libasound2 libpango-1.0-0 libcairo2; do dpkg -L "$p" | grep -E "[.]so([.][0-9]+)*$" | while read -r f; do [ -f "$f" ] && [ ! -L "$f" ] && ldd "$f" 2>&1 | sed "s|^|$f: |"; done; done; true'
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '=>' <<<"$output")" -gt 0 ] || { echo "no libraries checked: $output"; false; }
+  run grep 'not found' <<<"$output"
+  [ "$status" -ne 0 ] || { echo "unresolved: $output"; false; }
+}
+
 @test "retained utilities: the original toolset is still present and tmux runs" {
   run offline 'for b in git curl python3 make g++ cron vim screen node npm claude openclaw alphaclaw; do command -v "$b" >/dev/null || { echo "missing $b"; exit 1; }; done; tmux -V'
   [ "$status" -eq 0 ]
@@ -238,7 +270,7 @@ teardown_file() {
 }
 
 @test "build tooling and service scaffolding never reach the runtime image" {
-  for p in unzip gpg cargo rustc; do
+  for p in gpg cargo rustc; do
     run offline "command -v $p"
     [ "$status" -ne 0 ]
   done
@@ -261,7 +293,8 @@ teardown_file() {
   for bin in /usr/local/bin/bun /usr/local/bin/monolith /usr/local/bin/caddy /usr/local/bin/tailscale \
              /usr/local/bin/tailscaled "/usr/lib/postgresql/${PG_MAJOR}/bin/psql" \
              "/usr/lib/postgresql/${PG_MAJOR}/bin/pg_dump" "/usr/lib/postgresql/${PG_MAJOR}/bin/pg_restore" \
-             /usr/bin/git-lfs /usr/bin/jq /usr/bin/ffmpeg /usr/bin/ffprobe; do
+             /usr/bin/git-lfs /usr/bin/jq /usr/bin/ffmpeg /usr/bin/ffprobe /usr/bin/zstd /usr/bin/unzip \
+             /usr/bin/zip /usr/bin/xz /usr/bin/sqlite3 /usr/bin/rg /usr/bin/convert; do
     run offline "test -x $bin"
     [ "$status" -eq 0 ] || { echo "$bin is missing or not executable"; false; }
     run offline "ldd $bin 2>&1; true"

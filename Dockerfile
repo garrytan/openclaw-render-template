@@ -4,7 +4,7 @@
 #  baked-tools.env (repo; the single pin source: versions, checksums, MONOLITH_REV, PG_MAJOR)
 #       │ COPY                                   │ COPY
 #       ▼                                        ▼
-#  ┌─ stage pins (node:24-slim) ─────────┐  ┌─ stage tools (node:24-slim) ──────────────────────┐
+#  ┌─ stage pins (node:24-bookworm-slim) ┐  ┌─ stage tools (node:24-bookworm-slim) ─────────────┐
 #  │ /monolith.env = MONOLITH_* lines     │  │ apt: ca-certificates curl unzip (build-only)      │
 #  │ /pg.env       = PG_MAJOR line        │  │ . baked-tools.env → arch case → dl() + sha*sum -c │
 #  │ (each file changes only when its own │  │  → /out/usr/local/bin/{caddy,tailscale,tailscaled,│
@@ -18,12 +18,18 @@
 #  │   --rev $MONOLITH_REV --locked → /opt/monolith  │                  │
 #  └──────┬───────────────────────────────────────────┘                 │
 #         │                 │                                          │
-#  ┌─ final (node:24-slim) ─┼─ layer order is load-bearing ────────────┼──┐
+#  ┌─ final (node:24-bookworm-slim) ─┼─ layer order is load-bearing ───┼──┐
 #  │ 1 apt line (git curl … tmux)                UNCHANGED             │  │
 #  │ 2 NEW apt/PGDG RUN (reads /pg.env): ca-certificates openssl gpg   │  │
 #  │   jq git-lfs psmisc util-linux; PGDG key fingerprint check;       │  │
 #  │   poppler-utils fontconfig fonts-noto-cjk (PDF text, CJK fonts);  │  │
 #  │   ffmpeg (ffmpeg, ffprobe: audio and video jobs);                 │  │
+#  │   zstd unzip zip xz-utils sqlite3 ripgrep imagemagick (archive,   │  │
+#  │   search, database and image tools for the agent);                │  │
+#  │   libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1          │  │
+#  │   libxdamage1 libatspi2.0-0 libnss3 libnspr4 libgbm1              │  │
+#  │   libxkbcommon0 libxrandr2 libasound2 libpango-1.0-0 libcairo2    │  │
+#  │   (runtime libraries for a Chrome kept on /data);                 │  │
 #  │   postgresql-client-$PG_MAJOR (client only);                      │  │
 #  │   purge gpg; git lfs install --system; smoke   (ABOVE npm layers: │  │
 #  │   alphaclaw pin bumps never re-fetch apt or move the PG minor)    │  │
@@ -41,14 +47,14 @@
 #  --build-arg, so an ARG default would be a dashboard-overridable pin.
 
 # --- stage pins: split the manifest so each consumer's cache key depends only on its own pins
-FROM node:24-slim AS pins
+FROM node:24-bookworm-slim AS pins
 COPY baked-tools.env /baked-tools.env
 RUN set -eu; \
     grep '^MONOLITH_' /baked-tools.env > /monolith.env; test -s /monolith.env; \
     grep '^PG_MAJOR=' /baked-tools.env > /pg.env; test -s /pg.env
 
 # --- stage tools: download + checksum-verify the static release binaries (build tooling stays here)
-FROM node:24-slim AS tools
+FROM node:24-bookworm-slim AS tools
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip && rm -rf /var/lib/apt/lists/*
 COPY baked-tools.env /opt/baked-tools.env
 # dash has no pipefail: every pipeline below ends in the command whose failure
@@ -93,7 +99,7 @@ RUN set -eu; \
     test "$(/opt/monolith/bin/monolith --version)" = "monolith ${MONOLITH_VERSION}"
 
 # --- final image
-FROM node:24-slim
+FROM node:24-bookworm-slim
 
 # lsof: the pinned OpenClaw CLI locates the gateway listener through it, so the
 # graceful `openclaw gateway restart --wait` ask in alphaclaw's restart ladder
@@ -112,6 +118,15 @@ RUN apt-get update && apt-get install -y git curl procps python3 make g++ cron t
 # ffmpeg (with ffprobe) was a hand install too: every redeploy dropped it, and the
 # agent's audio and video jobs failed until someone reinstalled it. The smoke encodes
 # one second of tone to MP3 and probes it back, so a broken ffmpeg fails the build.
+# zstd, unzip, zip, xz-utils, sqlite3, ripgrep and imagemagick were hand installs the
+# agent kept needing back after every redeploy. The lib* packages are the runtime
+# libraries a Playwright Chrome kept on /data links against; without them it fails
+# to start after a redeploy even though its files are still on the disk. They are
+# named explicitly so a change to what ffmpeg pulls in cannot drop them, and the
+# smoke runs every tool and dpkg-query checks every library package.
+# The base is node:24-bookworm-slim, not node:24-slim: a move of the floating tag to
+# a newer Debian would rename several of these packages (the t64 transition) and
+# break every deploy build at once.
 # The PGDG key is verified by fingerprint (exactly one primary key, and it must be
 # the pinned one) before apt ever sees it. TMPDIR is unset at this point, so the
 # scratch dir lands in the build container's ephemeral temp (no literal path here;
@@ -120,7 +135,7 @@ COPY --from=pins /pg.env /opt/pg.env
 RUN set -eu; \
     . /opt/pg.env; \
     apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates openssl gpg jq git-lfs psmisc util-linux poppler-utils fontconfig fonts-noto-cjk ffmpeg; \
+    apt-get install -y --no-install-recommends ca-certificates openssl gpg jq git-lfs psmisc util-linux poppler-utils fontconfig fonts-noto-cjk ffmpeg zstd unzip zip xz-utils sqlite3 ripgrep imagemagick libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1 libatspi2.0-0 libnss3 libnspr4 libgbm1 libxkbcommon0 libxrandr2 libasound2 libpango-1.0-0 libcairo2; \
     scratch="$(mktemp -d)"; \
     curl -fsSL --retry 5 --retry-all-errors --retry-max-time 180 --connect-timeout 20 -o "$scratch/pgdg.asc" https://www.postgresql.org/media/keys/ACCC4CF8.asc; \
     listing="$(GNUPGHOME="$scratch" gpg --batch --show-keys --with-colons "$scratch/pgdg.asc")"; \
@@ -143,6 +158,8 @@ RUN set -eu; \
     ffmpeg -hide_banner -version; ffprobe -hide_banner -version; \
     ffmpeg -hide_banner -loglevel error -f lavfi -i sine=frequency=440:duration=1 -c:a libmp3lame -f mp3 - | ffprobe -v error -show_entries stream=codec_name -of csv=p=0 - | grep -qx mp3; \
     fc-list :lang=ja family | grep -qF "Noto Sans CJK JP"; \
+    zstd -V; unzip -v >/dev/null; zip -v >/dev/null; xz -V; sqlite3 -version; rg --version; convert -version; \
+    dpkg-query -W libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1 libatspi2.0-0 libnss3 libnspr4 libgbm1 libxkbcommon0 libxrandr2 libasound2 libpango-1.0-0 libcairo2; \
     test -s /etc/ssl/certs/ca-certificates.crt
 
 # Pinned exactly, same discipline as the alphaclaw SHA pin: an unpinned

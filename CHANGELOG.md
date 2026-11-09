@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.55] - 2026-11-09
+
+### Added
+- The image now ships the command-line tools the agent kept reinstalling by hand after every redeploy: `zstd`, `unzip`, `zip`, `xz`, `sqlite3`, `rg` (ripgrep) and ImageMagick (`convert`, `identify`). Debian's ImageMagick policy still refuses PDF and PostScript input, and the e2e tests check that it does.
+- The image now ships the runtime libraries a Playwright Chrome needs (libnss3, libnspr4, libgbm1, libxkbcommon0, libxrandr2, libxcomposite1, libxdamage1, libatk1.0-0, libatk-bridge2.0-0, libatspi2.0-0, libcups2, libasound2, libpango-1.0-0, libcairo2), so a Chrome kept on `/data` still starts after a redeploy instead of failing on missing shared libraries. No browser is baked into the image.
+- The build runs every new tool and checks every library package, so a missing one fails the build rather than the agent's next job. Cost: about 22 MB on top of the ffmpeg image (the support-package layer grows from 533 MB to 555 MB, measured on amd64); the next deploy rebuilds the claude-code and app `npm install` layers once.
+
+### Changed
+- Every `node` base image is now `node:24-bookworm-slim` instead of `node:24-slim`. Today both tags are the same image; pinning the Debian release keeps a future move of `node:24-slim` to a newer Debian (renamed library packages, ImageMagick 7) from breaking every deploy build at once.
+
 ## [2.0.0.54] - 2026-11-09
 
 ### Changed
