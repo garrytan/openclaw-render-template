@@ -6,11 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2.0.0.55] - 2026-11-09
 
+### Added
+- The image now ships the command-line tools the agent kept reinstalling by hand after every redeploy: `zstd`, `unzip`, `zip`, `xz`, `sqlite3`, `rg` (ripgrep) and ImageMagick (`convert`, `identify`). Debian's ImageMagick policy still refuses PDF and PostScript input, and the e2e tests check that it does.
+- The image now ships the runtime libraries a Playwright Chrome needs (libnss3, libnspr4, libgbm1, libxkbcommon0, libxrandr2, libxcomposite1, libxdamage1, libatk1.0-0, libatk-bridge2.0-0, libatspi2.0-0, libcups2, libasound2, libpango-1.0-0, libcairo2), so a Chrome kept on `/data` still starts after a redeploy instead of failing on missing shared libraries. No browser is baked into the image.
+- The build runs every new tool and checks every library package, so a missing one fails the build rather than the agent's next job. Cost: about 22 MB on top of the ffmpeg image (the support-package layer grows from 533 MB to 555 MB, measured on amd64); the next deploy rebuilds the claude-code and app `npm install` layers once.
+
 ### Changed
-- Updated the bundled alphaclaw from 0.10.228 to 0.10.231 (`64e6a95316c9c41a6dfddd284b996de2ae507595`). OpenClaw stays on 2026.10.9, so the deploy is a same-version restart with no Doctor migration. This release:
-  - keeps OpenClaw's unpacked session archives on the data disk instead of /tmp, and lets the /tmp watch clear them and react to fast growth, so reading old sessions can no longer fill /tmp and get the instance replaced (#384);
-  - adds `/secret NAME` so the owner gets a one-time secret link straight from Telegram (#379);
-  - lets the owner set who the agent talks to in each Telegram group, and block people and groups (#382).
+- Every `node` base image is now `node:24-bookworm-slim` instead of `node:24-slim`. Today both tags are the same image; pinning the Debian release keeps a future move of `node:24-slim` to a newer Debian (renamed library packages, ImageMagick 7) from breaking every deploy build at once.
 
 ## [2.0.0.54] - 2026-11-09
 

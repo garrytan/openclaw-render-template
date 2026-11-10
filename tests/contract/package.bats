@@ -10,7 +10,7 @@ setup() {
 }
 
 @test "package.json: alphaclaw is a git+https dependency on garrytan/alphaclaw" {
-  # https (not ssh, not the github: shorthand): the node:24-slim Docker build
+  # https (not ssh, not the github: shorthand): the node:24-bookworm-slim Docker build
   # has no SSH key, so the spec must fetch anonymously over HTTPS.
   [[ "$ALPHACLAW_SPEC" =~ ^git\+https://github\.com/garrytan/alphaclaw\.git# ]]
 }

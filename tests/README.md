@@ -96,7 +96,7 @@ npm run test:all  # everything
     (`/app/node_modules/.bin/openclaw` still wins), functional checks
     (`git lfs` commit lands an object under `.git/lfs/objects`, `caddy
     validate`, `jq`, `openssl`, `flock`), and the negatives (no `postgres`
-    server binary, no `unzip`/`gpg`, no systemd units for tailscaled). It
+    server binary, no `gpg`/`cargo`/`rustc`, no systemd units for tailscaled). It
     proves the **checksum-mismatch build gate** by mutating the Caddy
     checksums in a throwaway build context holding only `Dockerfile`,
     `.dockerignore` and `baked-tools.env`, and asserting `docker build

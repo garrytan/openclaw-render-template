@@ -84,14 +84,18 @@ env_value() { sed -nE "s/^$1=(.*)$/\1/p" "$ENVF"; }
 
 # --- Dockerfile stages ----------------------------------------------------------
 
-@test "Dockerfile: stages pins, tools, monolith-build + a node:24-slim final stage" {
-  grep -qxF 'FROM node:24-slim AS pins' "$DF"
-  grep -qxF 'FROM node:24-slim AS tools' "$DF"
+@test "Dockerfile: stages pins, tools, monolith-build + a node:24-bookworm-slim final stage" {
+  grep -qxF 'FROM node:24-bookworm-slim AS pins' "$DF"
+  grep -qxF 'FROM node:24-bookworm-slim AS tools' "$DF"
   grep -qE '^FROM rust:[0-9]+\.[0-9]+\.[0-9]+-slim-bookworm@sha256:[0-9a-f]{64} AS monolith-build$' "$DF"
-  grep -qxF 'FROM node:24-slim' "$DF"
+  grep -qxF 'FROM node:24-bookworm-slim' "$DF"
   [ "$(grep -c '^FROM ' "$DF")" -eq 4 ]
   # Node 24 is the runtime (openclaw 2026.10.6 gates on >=24.22.1 <25 || >=26.12.1;
-  # node:24-slim resolves to 24.22.1+): no other base sneaks in
+  # node:24-bookworm-slim resolves to 24.22.1+): no other base sneaks in. The
+  # Debian release is pinned in the tag: the floating node:24-slim moving to a
+  # newer Debian would rename the t64 library packages and break every build.
+  run grep -E '^FROM node:24-slim' "$DF"
+  [ "$status" -ne 0 ]
   run grep -E '^FROM (node:(1[0-9]|2[0-35-9]|[3-9][0-9])|debian|ubuntu|alpine)' "$DF"
   [ "$status" -ne 0 ]
 }
@@ -154,7 +158,7 @@ env_value() { sed -nE "s/^$1=(.*)$/\1/p" "$ENVF"; }
 
 @test "Dockerfile: the header diagram names every package the apt/PGDG RUN installs" {
   # The header comment is the documented pipeline diagram ("keep in sync").
-  header=$(awk '/^FROM /{exit} {print}' "$DF" | awk '/final \(node:24-slim\)/{f=1} f')
+  header=$(awk '/^FROM /{exit} {print}' "$DF" | awk '/final \(node:24-bookworm-slim\)/{f=1} f')
   [ -n "$header" ]
   pkgs=$(final_text | grep -oE 'apt-get install -y --no-install-recommends ca-certificates[^;&]*' | head -1 | sed 's/.*--no-install-recommends //')
   [ "$(wc -w <<<"$pkgs")" -ge 5 ]
@@ -336,9 +340,32 @@ env_value() { sed -nE "s/^$1=(.*)$/\1/p" "$ENVF"; }
   # Wintermute's audio and video jobs shell out to ffmpeg/ffprobe; a hand install
   # vanished on every redeploy (2026-11-09: the outdoor audio pull failed for hours).
   final=$(final_text)
-  grep -qE '^[[:space:]]*apt-get install -y --no-install-recommends ca-certificates openssl gpg .* ffmpeg; \\$' <<<"$final"
+  grep -qE '^[[:space:]]*apt-get install -y --no-install-recommends ca-certificates openssl gpg .* ffmpeg( [^;]*)?; \\$' <<<"$final"
   grep -qF 'ffmpeg -hide_banner -version; ffprobe -hide_banner -version;' <<<"$final"
   grep -qF '| grep -qx mp3;' <<<"$final"
   # above the npm layers, like the rest of the support packages
-  [ "$(line_of 'fonts-noto-cjk ffmpeg; ')" -lt "$(line_of '^RUN npm install -g @anthropic-ai/claude-code@')" ]
+  [ "$(line_of 'fonts-noto-cjk ffmpeg ')" -lt "$(line_of '^RUN npm install -g @anthropic-ai/claude-code@')" ]
+}
+
+@test "Dockerfile: the agent's archive, search, database and image tools are baked and smoked" {
+  # Hand installs the agent kept needing back after every redeploy (GST-2069).
+  final=$(final_text)
+  pkgs=$(grep -oE 'apt-get install -y --no-install-recommends ca-certificates[^;&]*' <<<"$final" | head -1)
+  for p in zstd unzip zip xz-utils sqlite3 ripgrep imagemagick; do
+    grep -qw -- "$p" <<<"$pkgs" || { echo "support apt RUN omits $p"; false; }
+  done
+  grep -qF 'zstd -V; unzip -v >/dev/null; zip -v >/dev/null; xz -V; sqlite3 -version; rg --version; convert -version; \' <<<"$final"
+  [ "$(line_of 'sqlite3 ripgrep imagemagick ')" -lt "$(line_of '^RUN npm install -g @anthropic-ai/claude-code@')" ]
+}
+
+@test "Dockerfile: Chrome's runtime libraries are named explicitly and checked at build" {
+  # A Playwright Chrome on /data fails ldd after a redeploy without these; naming
+  # them keeps a change in what ffmpeg pulls in from dropping one.
+  final=$(final_text)
+  libs="libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1 libatspi2.0-0 libnss3 libnspr4 libgbm1 libxkbcommon0 libxrandr2 libasound2 libpango-1.0-0 libcairo2"
+  pkgs=$(grep -oE 'apt-get install -y --no-install-recommends ca-certificates[^;&]*' <<<"$final" | head -1)
+  for p in $libs; do
+    grep -qF -- " $p" <<<"$pkgs" || { echo "support apt RUN omits $p"; false; }
+  done
+  grep -qF "dpkg-query -W $libs; \\" <<<"$final"
 }

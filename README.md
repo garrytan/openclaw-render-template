@@ -192,6 +192,9 @@ The image ships a fixed set of operator/agent tools so they survive redeploys in
 | git-lfs, jq, openssl, ca-certificates, flock (util-linux), fuser (psmisc) | Debian bookworm | Debian bookworm apt                                          | apt signatures                      | `/usr/bin`, `/bin`                                                | see Debian   |
 | pdftotext, pdfinfo (poppler-utils), fontconfig, Noto CJK fonts (fonts-noto-cjk) | Debian bookworm | Debian bookworm apt | apt signatures | `/usr/bin`, `/usr/share/fonts/opentype/noto` | see Debian |
 | ffmpeg, ffprobe (ffmpeg) | Debian bookworm (5.1) | Debian bookworm apt | apt signatures | `/usr/bin` | LGPL-2.1+/GPL-2+ (see Debian) |
+| zstd, unzip, zip, xz (xz-utils), sqlite3, rg (ripgrep) | Debian bookworm | Debian bookworm apt | apt signatures | `/usr/bin` | see Debian |
+| ImageMagick 6 (`convert`, `identify`; Debian's policy refuses PDF/PS input) | Debian bookworm | Debian bookworm apt | apt signatures | `/usr/bin` | ImageMagick |
+| Chrome runtime libraries (libnss3, libnspr4, libgbm1, libxkbcommon0, libxrandr2, libxcomposite1, libxdamage1, libatk1.0-0, libatk-bridge2.0-0, libatspi2.0-0, libcups2, libasound2, libpango-1.0-0, libcairo2) for a Playwright Chrome kept on `/data`; no browser is baked | Debian bookworm | Debian bookworm apt | apt signatures | `/usr/lib/<arch>-linux-gnu` | see Debian |
 
 **Nothing is auto-started.** Installing a tool does not enable it: the image launches no `tailscaled`, no `caddy`, opens no extra port and adds no cron job. A fresh deploy reaches the setup UI with no Tailscale or Caddy configuration. Gateway lifecycle stays with AlphaClaw.
 
