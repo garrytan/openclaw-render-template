@@ -102,9 +102,10 @@ npm run test:all  # everything
     `.dockerignore` and `baked-tools.env`, and asserting `docker build
     --target tools` fails. Then it boots the image **credential-free**
     (only the env vars `render.yaml` sets: `SETUP_PASSWORD`, the two generated tokens, `PORT`) and asserts `/health` 200 with no
-    `tailscaled`/`caddy`/`monolith` process, no tool port listening (80,
+    `tailscaled`/`caddy`/`monolith`/`ngrok`/`Xvfb` process, no tool port listening (80,
     443, 2019, 41641, 5432; `:3000` present as the positive control), one
-    supervisor and at most one alphaclaw, and no tool names in cron; boots
+    supervisor and at most one alphaclaw, and no tool names in cron (`ngrok`,
+    `Xvfb` and `xvfb-run` included); boots
     against a **reused `/data` volume** (seeded file kept, `/data/tmp`
     re-stickied, old `start.log` line retained, restart appends a boot);
     and finishes with the prompt-shutdown check.
