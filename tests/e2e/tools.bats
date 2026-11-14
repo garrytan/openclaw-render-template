@@ -59,7 +59,7 @@ setup_file() {
   # shellcheck disable=SC1091
   . "$REPO/baked-tools.env"
   set +a
-  for k in CADDY_VERSION TAILSCALE_VERSION BUN_VERSION MONOLITH_VERSION PG_MAJOR; do
+  for k in CADDY_VERSION TAILSCALE_VERSION BUN_VERSION MONOLITH_VERSION NGROK_VERSION PG_MAJOR; do
     [ -n "${!k}" ] || { echo "baked-tools.env is missing $k" >&2; return 1; }
   done
   ARCH="$(docker run --rm "$IMAGE" dpkg --print-architecture)"
@@ -155,6 +155,24 @@ teardown_file() {
   [ "$status" -eq 0 ]
   grep -q '<html' <<<"$output"
   grep -q 'hello' <<<"$output"
+}
+
+@test "ngrok: pinned version, on PATH, runs offline" {
+  run offline 'ngrok version'
+  [ "$status" -eq 0 ]
+  [ "$output" = "ngrok version ${NGROK_VERSION}" ]
+  run offline 'command -v ngrok'
+  [ "$output" = "/usr/local/bin/ngrok" ]
+}
+
+@test "X11 tools: all 37 binaries resolve and Xvfb serves a display the utilities can query, offline" {
+  run offline 'for b in Xvfb xvfb-run xauth appres editres listres luit viewres xdpyinfo xdriinfo xev xfd xfontsel xkill xlsatoms xlsclients xlsfonts xmessage xprop xvinfo xwininfo setxkbmap xkbbell xkbcomp xkbevd xkbprint xkbvleds xkbwatch bdftopcf bdftruncate fonttosfnt mkfontdir mkfontscale ucs2any update-fonts-alias update-fonts-dir update-fonts-scale; do command -v "$b" >/dev/null || echo "missing $b"; done'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || { echo "$output"; false; }
+  run offline "xvfb-run -a -s '-screen 0 1280x800x24' sh -c 'xdpyinfo | grep \"dimensions:\"; xprop -root >/dev/null && xwininfo -root >/dev/null && setxkbmap -print >/dev/null && echo ok'"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  grep -q '1280x800 pixels' <<<"$output"
+  [ "${output##*$'\n'}" = "ok" ]
 }
 
 @test "PostgreSQL client: psql/pg_dump/pg_restore are major \$PG_MAJOR in the Debian layout, no server" {
@@ -294,7 +312,8 @@ teardown_file() {
              /usr/local/bin/tailscaled "/usr/lib/postgresql/${PG_MAJOR}/bin/psql" \
              "/usr/lib/postgresql/${PG_MAJOR}/bin/pg_dump" "/usr/lib/postgresql/${PG_MAJOR}/bin/pg_restore" \
              /usr/bin/git-lfs /usr/bin/jq /usr/bin/ffmpeg /usr/bin/ffprobe /usr/bin/zstd /usr/bin/unzip \
-             /usr/bin/zip /usr/bin/xz /usr/bin/sqlite3 /usr/bin/rg /usr/bin/convert; do
+             /usr/bin/zip /usr/bin/xz /usr/bin/sqlite3 /usr/bin/rg /usr/bin/convert /usr/local/bin/ngrok \\
+             /usr/bin/Xvfb /usr/bin/xauth /usr/bin/xdpyinfo /usr/bin/xkbcomp /usr/bin/mkfontscale; do
     run offline "test -x $bin"
     [ "$status" -eq 0 ] || { echo "$bin is missing or not executable"; false; }
     run offline "ldd $bin 2>&1; true"
@@ -367,7 +386,7 @@ teardown_file() {
 @test "no tool daemon runs and no tool port listens after boot" {
   run docker exec "$C_BOOT" pgrep -x tini        # positive control: pgrep sees PID 1
   [ "$status" -eq 0 ]
-  for p in tailscaled caddy monolith; do
+  for p in tailscaled caddy monolith ngrok Xvfb; do
     run docker exec "$C_BOOT" pgrep -x "$p"
     [ "$status" -ne 0 ]
   done
@@ -397,7 +416,7 @@ teardown_file() {
   run docker exec "$C_BOOT" sh -c 'cat /etc/crontab /etc/cron.d/* 2>/dev/null; crontab -l 2>/dev/null; true'
   [ "$status" -eq 0 ]
   CRON="$output"
-  run grep -Ew 'caddy|tailscale|tailscaled|monolith|bun|bunx|psql|pg_dump|pg_restore' <<<"$CRON"
+  run grep -Ew 'caddy|tailscale|tailscaled|monolith|bun|bunx|psql|pg_dump|pg_restore|ngrok|Xvfb|xvfb-run' <<<"$CRON"
   [ "$status" -ne 0 ]
 }
 
