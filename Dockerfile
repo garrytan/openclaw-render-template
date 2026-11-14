@@ -173,7 +173,7 @@ RUN set -eu; \
     dpkg-query -W libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1 libatspi2.0-0 libnss3 libnspr4 libgbm1 libxkbcommon0 libxrandr2 libasound2 libpango-1.0-0 libcairo2; \
     for b in Xvfb xvfb-run xauth appres editres listres luit viewres xdpyinfo xdriinfo xev xfd xfontsel xkill xlsatoms xlsclients xlsfonts xmessage xprop xvinfo xwininfo setxkbmap xkbbell xkbcomp xkbevd xkbprint xkbvleds xkbwatch bdftopcf bdftruncate fonttosfnt mkfontdir mkfontscale ucs2any update-fonts-alias update-fonts-dir update-fonts-scale; do command -v "$b" >/dev/null || { echo "missing X11 tool: $b" >&2; exit 1; }; done; \
     xvfb-run -a sh -c 'xdpyinfo >/dev/null && xprop -root >/dev/null && xwininfo -root >/dev/null && setxkbmap -print >/dev/null'; \
-    rm -f /tmp/.X*-lock /tmp/.X11-unix/X*; \
+    i=0; while pgrep -x Xvfb >/dev/null; do i=$((i+1)); [ "$i" -le 100 ] || { echo "Xvfb still running after the smoke" >&2; exit 1; }; sleep 0.1; done; \
     test -s /etc/ssl/certs/ca-certificates.crt
 
 # Pinned exactly, same discipline as the alphaclaw SHA pin: an unpinned
