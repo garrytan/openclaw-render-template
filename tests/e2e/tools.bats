@@ -173,6 +173,9 @@ teardown_file() {
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   grep -q '1280x800 pixels' <<<"$output"
   [ "${output##*$'\n'}" = "ok" ]
+  run offline 'ls -A /tmp/.X11-unix 2>/dev/null; ls -d /tmp/.X*-lock 2>/dev/null; true'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || { echo "build smoke left X state in the image: $output"; false; }
 }
 
 @test "PostgreSQL client: psql/pg_dump/pg_restore are major \$PG_MAJOR in the Debian layout, no server" {
