@@ -154,6 +154,7 @@ env_value() { sed -nE "s/^$1=(.*)$/\1/p" "$ENVF"; }
   grep -qF 'test "$(bun --version)" = "${BUN_VERSION}"' <<<"$final"
   grep -qF 'test "$(bunx --version)" = "${BUN_VERSION}"' <<<"$final"
   grep -qF 'test "$(monolith --version)" = "monolith ${MONOLITH_VERSION}"' <<<"$final"
+  grep -qF 'test "$(ngrok version)" = "ngrok version ${NGROK_VERSION}"' <<<"$final"
 }
 
 @test "Dockerfile: the header diagram names every package the apt/PGDG RUN installs" {
@@ -209,8 +210,8 @@ env_value() { sed -nE "s/^$1=(.*)$/\1/p" "$ENVF"; }
 
 @test "Dockerfile: every artifact download in the tools stage is checksum-verified" {
   code=$(stage_text tools | grep -vE '^[[:space:]]*#')
-  [ "$(grep -c 'dl "https://' <<<"$code")" -eq 3 ]
-  [ "$(grep -Ec 'sha(256|512)sum -c -' <<<"$code")" -eq 3 ]
+  [ "$(grep -c 'dl "https://' <<<"$code")" -eq 4 ]
+  [ "$(grep -Ec 'sha(256|512)sum -c -' <<<"$code")" -eq 4 ]
   # the only command-position curl in the stage is the dl() definition itself
   [ "$(grep -Ec "$CURL_CMD_ERE" <<<"$code")" -eq 1 ]
 }
@@ -368,4 +369,31 @@ env_value() { sed -nE "s/^$1=(.*)$/\1/p" "$ENVF"; }
     grep -qF -- " $p" <<<"$pkgs" || { echo "support apt RUN omits $p"; false; }
   done
   grep -qF "dpkg-query -W $libs; \\" <<<"$final"
+}
+
+@test "Dockerfile: ngrok is downloaded from its versioned release and checksum-verified" {
+  tools=$(stage_text tools)
+  grep -qF 'dl "https://bin.equinox.io/a/${ngrok_asset}/ngrok-v3-${NGROK_VERSION}-linux-${arch}.tar.gz" ngrok.tgz;' <<<"$tools"
+  grep -qF 'echo "${ngrok_sha}  ngrok.tgz" | sha256sum -c -;' <<<"$tools"
+  grep -qF 'install -m 0755 ngrok /out/usr/local/bin/ngrok;' <<<"$tools"
+  # the floating "stable" channel URL would break the build at every ngrok release
+  run grep -E 'ngrok-v3-stable' <<<"$DF_CODE"
+  [ "$status" -ne 0 ]
+}
+
+@test "Dockerfile: the headed browser's X11 tools are baked and every binary is checked at build" {
+  # The agent's headed browser apt-installed these on every fresh container (GST-2685).
+  final=$(final_text)
+  pkgs=$(grep -oE 'apt-get install -y --no-install-recommends ca-certificates[^;&]*' <<<"$final" | head -1)
+  for p in xvfb xauth x11-utils x11-xkb-utils xfonts-utils; do
+    grep -qw -- "$p" <<<"$pkgs" || { echo "support apt RUN omits $p"; false; }
+  done
+  loop=$(grep -E '^[[:space:]]*for b in Xvfb ' <<<"$final")
+  names=$(sed -E 's/.*for b in (.*); do command -v .*/\1/' <<<"$loop")
+  [ "$(wc -w <<<"$names")" -eq 37 ]
+  for b in Xvfb xvfb-run xauth xdpyinfo xprop xwininfo xkbcomp setxkbmap mkfontscale mkfontdir; do
+    grep -qw -- "$b" <<<"$names" || { echo "X11 smoke omits $b"; false; }
+  done
+  grep -qF "xvfb-run -a sh -c 'xdpyinfo >/dev/null" <<<"$final"
+  [ "$(line_of 'x11-xkb-utils xfonts-utils; ')" -lt "$(line_of '^RUN npm install -g @anthropic-ai/claude-code@')" ]
 }

@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.56] - 2026-11-14
+
+### Added
+- The image now ships Xvfb and the X11 utilities (Debian's xvfb, xauth, x11-utils, x11-xkb-utils and xfonts-utils: `Xvfb`, `xvfb-run`, `xdpyinfo`, `xprop`, `xwininfo`, `xkbcomp`, `setxkbmap`, `mkfontscale` and the rest, 37 binaries), so the agent's headed browser has a virtual display after every redeploy instead of apt-installing them on each fresh container. `xauth` is named because xvfb only recommends it and `xvfb-run` cannot start without it. The build checks every binary with `command -v` and opens a display with `xvfb-run`.
+- The image now ships ngrok 3.39.13 at `/usr/local/bin/ngrok`, replacing a hand install that every redeploy removed. It is downloaded from ngrok's versioned release, checked against the SHA-256 pinned in `baked-tools.env` (amd64 and arm64), and the build fails unless `ngrok version` reports the pin. Nothing starts a tunnel.
+- Cost: about 40 MB uncompressed on amd64 (measured layer by layer against the previous image: the static tools layer grows by 32.8 MB for ngrok, the support-package layer from 555 MB to 562 MB for the X11 tools); the next deploy rebuilds the claude-code and app `npm install` layers once.
+
 ## [2.0.0.55] - 2026-11-09
 
 ### Added

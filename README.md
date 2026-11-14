@@ -187,6 +187,7 @@ The image ships a fixed set of operator/agent tools so they survive redeploys in
 | Caddy                                                                    | 2.11.4          | GitHub release tarball                                       | SHA-512 from upstream `checksums.txt` | `/usr/local/bin/caddy`                                            | Apache-2.0   |
 | Tailscale (`tailscale`, `tailscaled`)                                    | 1.102.3         | pkgs.tailscale.com static tgz                                | SHA-256 sidecar                     | `/usr/local/bin/{tailscale,tailscaled}`                           | BSD-3-Clause |
 | Bun (`bun`, `bunx`)                                                      | 1.4.4           | GitHub release zip                                           | SHA-256 from `SHASUMS256.txt`       | `/usr/local/bin/{bun,bunx}`                                       | MIT          |
+| ngrok | 3.39.13 | ngrok's versioned release tarball (bin.equinox.io) | SHA-256 pinned in `baked-tools.env` (ngrok publishes no checksum file; matches Arch's AUR package) | `/usr/local/bin/ngrok` | ngrok Terms of Service (proprietary) |
 | monolith                                                                 | 2.10.1          | built from git rev `47affd5f…` with `cargo install --locked` | commit + `Cargo.lock`               | `/usr/local/bin/monolith`                                         | CC0-1.0      |
 | PostgreSQL client                                                        | 17              | PGDG signed apt repo                                         | apt signature + key fingerprint     | `/usr/lib/postgresql/17/bin` (+ `/usr/bin` via `pg_wrapper`)      | PostgreSQL   |
 | git-lfs, jq, openssl, ca-certificates, flock (util-linux), fuser (psmisc) | Debian bookworm | Debian bookworm apt                                          | apt signatures                      | `/usr/bin`, `/bin`                                                | see Debian   |
@@ -194,6 +195,7 @@ The image ships a fixed set of operator/agent tools so they survive redeploys in
 | ffmpeg, ffprobe (ffmpeg) | Debian bookworm (5.1) | Debian bookworm apt | apt signatures | `/usr/bin` | LGPL-2.1+/GPL-2+ (see Debian) |
 | zstd, unzip, zip, xz (xz-utils), sqlite3, rg (ripgrep) | Debian bookworm | Debian bookworm apt | apt signatures | `/usr/bin` | see Debian |
 | ImageMagick 6 (`convert`, `identify`; Debian's policy refuses PDF/PS input) | Debian bookworm | Debian bookworm apt | apt signatures | `/usr/bin` | ImageMagick |
+| Xvfb and `xvfb-run` (xvfb, xauth), `xdpyinfo`, `xprop`, `xwininfo` and the rest of x11-utils, `xkbcomp` and `setxkbmap` (x11-xkb-utils), `mkfontscale` and `mkfontdir` (xfonts-utils): a virtual X display for a headed browser | Debian bookworm | Debian bookworm apt | apt signatures | `/usr/bin` | MIT/X11 (see Debian) |
 | Chrome runtime libraries (libnss3, libnspr4, libgbm1, libxkbcommon0, libxrandr2, libxcomposite1, libxdamage1, libatk1.0-0, libatk-bridge2.0-0, libatspi2.0-0, libcups2, libasound2, libpango-1.0-0, libcairo2) for a Playwright Chrome kept on `/data`; no browser is baked | Debian bookworm | Debian bookworm apt | apt signatures | `/usr/lib/<arch>-linux-gnu` | see Debian |
 
 **Nothing is auto-started.** Installing a tool does not enable it: the image launches no `tailscaled`, no `caddy`, opens no extra port and adds no cron job. A fresh deploy reaches the setup UI with no Tailscale or Caddy configuration. Gateway lifecycle stays with AlphaClaw.
@@ -213,6 +215,8 @@ These are things an operator *may* run by hand from the Render **Shell** tab. No
 
 - **Caddy** — keep configs under `/data`, e.g. `caddy validate --config /data/Caddyfile`.
 - **Bun** — `bun install -g` lands in the ephemeral `/root/.bun` unless `BUN_INSTALL` points under `/data` (e.g. `BUN_INSTALL=/data/.bun`).
+- **Xvfb** — a headed browser needs a display: `xvfb-run -a <command>` starts a throwaway virtual display for one command.
+- **ngrok** — keep its auth token and config under `/data` (for example `ngrok config add-authtoken <token> --config /data/ngrok/ngrok.yml`, then pass the same `--config` when you start a tunnel); nothing starts a tunnel for you.
 - **PostgreSQL client** — `psql`, `pg_dump`, `pg_restore` for an external database; there is no server in the image.
 
 ### git-lfs note

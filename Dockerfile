@@ -8,7 +8,7 @@
 #  │ /monolith.env = MONOLITH_* lines     │  │ apt: ca-certificates curl unzip (build-only)      │
 #  │ /pg.env       = PG_MAJOR line        │  │ . baked-tools.env → arch case → dl() + sha*sum -c │
 #  │ (each file changes only when its own │  │  → /out/usr/local/bin/{caddy,tailscale,tailscaled,│
-#  │  pins change, so downstream caches   │  │     bun,bunx→bun} ; /out/etc/baked-tools.env       │
+#  │  pins change, so downstream caches   │  │     bun,bunx→bun,ngrok} ; /out/etc/baked-tools.env │
 #  │  survive unrelated pin bumps)        │  └─────────────────────────┬─────────────────────────┘
 #  └──────┬─────────────────┬────────────┘                            │
 #         │ /monolith.env   │ /pg.env                                  │
@@ -30,6 +30,9 @@
 #  │   libxdamage1 libatspi2.0-0 libnss3 libnspr4 libgbm1              │  │
 #  │   libxkbcommon0 libxrandr2 libasound2 libpango-1.0-0 libcairo2    │  │
 #  │   (runtime libraries for a Chrome kept on /data);                 │  │
+#  │   xvfb xauth x11-utils x11-xkb-utils xfonts-utils (a virtual      │  │
+#  │   X display for the agent's headed browser; every binary          │  │
+#  │   checked with command -v, xvfb-run smoke);                       │  │
 #  │   postgresql-client-$PG_MAJOR (client only);                      │  │
 #  │   purge gpg; git lfs install --system; smoke   (ABOVE npm layers: │  │
 #  │   alphaclaw pin bumps never re-fetch apt or move the PG minor)    │  │
@@ -64,8 +67,8 @@ RUN set -eu; \
     dl() { curl -fsSL --retry 5 --retry-all-errors --retry-max-time 180 --connect-timeout 20 -o "$2" "$1"; }; \
     arch="$(dpkg --print-architecture)"; \
     case "$arch" in \
-      amd64) caddy_sha="$CADDY_SHA512_AMD64"; ts_sha="$TAILSCALE_SHA256_AMD64"; bun_arch=x64;     bun_sha="$BUN_SHA256_X64" ;; \
-      arm64) caddy_sha="$CADDY_SHA512_ARM64"; ts_sha="$TAILSCALE_SHA256_ARM64"; bun_arch=aarch64; bun_sha="$BUN_SHA256_AARCH64" ;; \
+      amd64) caddy_sha="$CADDY_SHA512_AMD64"; ts_sha="$TAILSCALE_SHA256_AMD64"; bun_arch=x64;     bun_sha="$BUN_SHA256_X64";     ngrok_asset="$NGROK_ASSET_AMD64"; ngrok_sha="$NGROK_SHA256_AMD64" ;; \
+      arm64) caddy_sha="$CADDY_SHA512_ARM64"; ts_sha="$TAILSCALE_SHA256_ARM64"; bun_arch=aarch64; bun_sha="$BUN_SHA256_AARCH64"; ngrok_asset="$NGROK_ASSET_ARM64"; ngrok_sha="$NGROK_SHA256_ARM64" ;; \
       *) echo "unsupported architecture: $arch" >&2; exit 1 ;; \
     esac; \
     work="$(mktemp -d)"; cd "$work"; \
@@ -84,6 +87,10 @@ RUN set -eu; \
     unzip -q bun.zip; \
     install -m 0755 "bun-linux-${bun_arch}/bun" /out/usr/local/bin/bun; \
     ln -s bun /out/usr/local/bin/bunx; \
+    dl "https://bin.equinox.io/a/${ngrok_asset}/ngrok-v3-${NGROK_VERSION}-linux-${arch}.tar.gz" ngrok.tgz; \
+    echo "${ngrok_sha}  ngrok.tgz" | sha256sum -c -; \
+    tar -xzf ngrok.tgz ngrok; \
+    install -m 0755 ngrok /out/usr/local/bin/ngrok; \
     install -m 0644 /opt/baked-tools.env /out/etc/baked-tools.env; \
     cd /; rm -rf "$work"
 
@@ -124,6 +131,10 @@ RUN apt-get update && apt-get install -y git curl procps python3 make g++ cron t
 # to start after a redeploy even though its files are still on the disk. They are
 # named explicitly so a change to what ffmpeg pulls in cannot drop them, and the
 # smoke runs every tool and dpkg-query checks every library package.
+# xvfb, x11-utils, x11-xkb-utils and xfonts-utils give the agent's headed browser a
+# virtual X display; it apt-installed them on every fresh container until now.
+# xauth is named because xvfb only Recommends it and xvfb-run cannot start without it.
+# The smoke checks all 37 binaries with command -v and opens a display with xvfb-run.
 # The base is node:24-bookworm-slim, not node:24-slim: a move of the floating tag to
 # a newer Debian would rename several of these packages (the t64 transition) and
 # break every deploy build at once.
@@ -135,7 +146,7 @@ COPY --from=pins /pg.env /opt/pg.env
 RUN set -eu; \
     . /opt/pg.env; \
     apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates openssl gpg jq git-lfs psmisc util-linux poppler-utils fontconfig fonts-noto-cjk ffmpeg zstd unzip zip xz-utils sqlite3 ripgrep imagemagick libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1 libatspi2.0-0 libnss3 libnspr4 libgbm1 libxkbcommon0 libxrandr2 libasound2 libpango-1.0-0 libcairo2; \
+    apt-get install -y --no-install-recommends ca-certificates openssl gpg jq git-lfs psmisc util-linux poppler-utils fontconfig fonts-noto-cjk ffmpeg zstd unzip zip xz-utils sqlite3 ripgrep imagemagick libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1 libatspi2.0-0 libnss3 libnspr4 libgbm1 libxkbcommon0 libxrandr2 libasound2 libpango-1.0-0 libcairo2 xvfb xauth x11-utils x11-xkb-utils xfonts-utils; \
     scratch="$(mktemp -d)"; \
     curl -fsSL --retry 5 --retry-all-errors --retry-max-time 180 --connect-timeout 20 -o "$scratch/pgdg.asc" https://www.postgresql.org/media/keys/ACCC4CF8.asc; \
     listing="$(GNUPGHOME="$scratch" gpg --batch --show-keys --with-colons "$scratch/pgdg.asc")"; \
@@ -160,6 +171,9 @@ RUN set -eu; \
     fc-list :lang=ja family | grep -qF "Noto Sans CJK JP"; \
     zstd -V; unzip -v >/dev/null; zip -v >/dev/null; xz -V; sqlite3 -version; rg --version; convert -version; \
     dpkg-query -W libatk1.0-0 libatk-bridge2.0-0 libcups2 libxcomposite1 libxdamage1 libatspi2.0-0 libnss3 libnspr4 libgbm1 libxkbcommon0 libxrandr2 libasound2 libpango-1.0-0 libcairo2; \
+    for b in Xvfb xvfb-run xauth appres editres listres luit viewres xdpyinfo xdriinfo xev xfd xfontsel xkill xlsatoms xlsclients xlsfonts xmessage xprop xvinfo xwininfo setxkbmap xkbbell xkbcomp xkbevd xkbprint xkbvleds xkbwatch bdftopcf bdftruncate fonttosfnt mkfontdir mkfontscale ucs2any update-fonts-alias update-fonts-dir update-fonts-scale; do command -v "$b" >/dev/null || { echo "missing X11 tool: $b" >&2; exit 1; }; done; \
+    xvfb-run -a sh -c 'xdpyinfo >/dev/null && xprop -root >/dev/null && xwininfo -root >/dev/null && setxkbmap -print >/dev/null'; \
+    i=0; while pgrep -x Xvfb >/dev/null; do i=$((i+1)); [ "$i" -le 100 ] || { echo "Xvfb still running after the smoke" >&2; exit 1; }; sleep 0.1; done; \
     test -s /etc/ssl/certs/ca-certificates.crt
 
 # Pinned exactly, same discipline as the alphaclaw SHA pin: an unpinned
@@ -196,7 +210,8 @@ RUN set -eu; \
     test -x /usr/local/bin/tailscaled; \
     test "$(bun --version)" = "${BUN_VERSION}"; \
     test "$(bunx --version)" = "${BUN_VERSION}"; \
-    test "$(monolith --version)" = "monolith ${MONOLITH_VERSION}"
+    test "$(monolith --version)" = "monolith ${MONOLITH_VERSION}"; \
+    test "$(ngrok version)" = "ngrok version ${NGROK_VERSION}"
 
 COPY start.sh /start.sh
 COPY failure-server.js /failure-server.js
