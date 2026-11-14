@@ -312,7 +312,7 @@ teardown_file() {
              /usr/local/bin/tailscaled "/usr/lib/postgresql/${PG_MAJOR}/bin/psql" \
              "/usr/lib/postgresql/${PG_MAJOR}/bin/pg_dump" "/usr/lib/postgresql/${PG_MAJOR}/bin/pg_restore" \
              /usr/bin/git-lfs /usr/bin/jq /usr/bin/ffmpeg /usr/bin/ffprobe /usr/bin/zstd /usr/bin/unzip \
-             /usr/bin/zip /usr/bin/xz /usr/bin/sqlite3 /usr/bin/rg /usr/bin/convert /usr/local/bin/ngrok \\
+             /usr/bin/zip /usr/bin/xz /usr/bin/sqlite3 /usr/bin/rg /usr/bin/convert /usr/local/bin/ngrok \
              /usr/bin/Xvfb /usr/bin/xauth /usr/bin/xdpyinfo /usr/bin/xkbcomp /usr/bin/mkfontscale; do
     run offline "test -x $bin"
     [ "$status" -eq 0 ] || { echo "$bin is missing or not executable"; false; }
