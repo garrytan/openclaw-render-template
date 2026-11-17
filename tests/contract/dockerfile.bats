@@ -72,6 +72,19 @@ setup() {
   grep -Eq 'npm install -g @anthropic-ai/claude-code@[0-9]+\.[0-9]+\.[0-9]+' "$REPO/Dockerfile"
 }
 
+@test "Dockerfile: bakes @circleback/cli at an exact version, on PATH as circleback and cb" {
+  # A hand install of the Circleback CLI was lost on every redeploy (GST-2953).
+  # Pinned like claude-code so an earlier layer change never floats it to latest.
+  grep -Eq 'npm install -g @circleback/cli@[0-9]+\.[0-9]+\.[0-9]+ ' "$REPO/Dockerfile"
+  grep -qF 'command -v circleback && command -v cb' "$REPO/Dockerfile"
+  grep -Eq 'npm ls -g @circleback/cli@[0-9]+\.[0-9]+\.[0-9]+$' "$REPO/Dockerfile"
+  claude=$(grep -n 'npm install -g @anthropic-ai/claude-code@' "$REPO/Dockerfile" | head -1 | cut -d: -f1)
+  cb=$(grep -n 'npm install -g @circleback/cli@' "$REPO/Dockerfile" | head -1 | cut -d: -f1)
+  app=$(grep -n '^COPY package.json ./$' "$REPO/Dockerfile" | head -1 | cut -d: -f1)
+  [ "$claude" -lt "$cb" ]
+  [ "$cb" -lt "$app" ]
+}
+
 # --- Init + entrypoint --------------------------------------------------------
 
 @test "Dockerfile: uses tini -g as PID 1 (group signaling)" {

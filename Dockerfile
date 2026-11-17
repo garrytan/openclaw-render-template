@@ -36,7 +36,7 @@
 #  │   postgresql-client-$PG_MAJOR (client only);                      │  │
 #  │   purge gpg; git lfs install --system; smoke   (ABOVE npm layers: │  │
 #  │   alphaclaw pin bumps never re-fetch apt or move the PG minor)    │  │
-#  │ 3 npm -g claude-code@pin                    UNCHANGED             │  │
+#  │ 3 npm -g claude-code@pin; npm -g @circleback/cli@pin              │  │
 #  │ 4 COPY package.json; npm install            UNCHANGED             │  │
 #  │ 5 shims (/usr/bin, /usr/local/bin symlinks) UNCHANGED             │  │
 #  │ 6 NEW COPY --from=tools bins + /etc/baked-tools.env  ◄────────────┼──┘
@@ -180,6 +180,12 @@ RUN set -eu; \
 # install floats to latest whenever an earlier layer changes, silently
 # shipping an unreviewed claude-code. Bump deliberately and record it.
 RUN npm install -g @anthropic-ai/claude-code@2.1.281 && npm cache clean --force
+
+# The Circleback CLI (`circleback`, alias `cb`) the agent uses for meeting notes.
+# It was a hand `npm install -g`, so every redeploy removed it. Pinned exactly,
+# like claude-code: 0.3.6 is the version the agent has tested. Bump deliberately
+# and record it. Its login stays in the user's ~/.config/circleback, never the image.
+RUN npm install -g @circleback/cli@0.3.6 && npm cache clean --force && command -v circleback && command -v cb && circleback --version && npm ls -g @circleback/cli@0.3.6
 
 WORKDIR /app
 

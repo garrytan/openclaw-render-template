@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.57] - 2026-11-17
+
+### Added
+- The image now ships the Circleback CLI, `@circleback/cli` 0.3.6, as `circleback` and `cb` on PATH. It was a hand `npm install -g`, so every redeploy removed it and the agent's meeting-notes jobs had no `cb` until someone reinstalled it. It is pinned to 0.3.6, the version the agent has tested, and the build fails unless both commands exist, `circleback --version` runs and npm reports 0.3.6 installed. The login stays in the user's `~/.config/circleback`; nothing about it is in the image.
+- Cost: one new npm layer below claude-code; the next deploy rebuilds that layer and the app `npm install` layer once.
+
 ## [2.0.0.56] - 2026-11-14
 
 ### Added
