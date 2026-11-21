@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.58] - 2026-11-21
+
+### Fixed
+- The Docker end-to-end tests pass again. Since OpenClaw 2026.11.3, a gateway that comes back after a crash or a hard kill never prints the `[gateway] ready` log line, because it is still recovering its agent database when startup ends. Two tests in `graceful-stop.bats` waited for that line, so CI failed on every push from 2026-11-16 even though the gateway came back healthy. Those tests now wait for the gateway's own `/readyz` to answer 200 from a new process instead. The image itself is unchanged.
+
+### Added
+- `CONTRIBUTING.md`: changes to `main`, pin bumps included, go through a pull request with both CI checks green.
+
 ## [2.0.0.57] - 2026-11-17
 
 ### Added
