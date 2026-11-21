@@ -15,7 +15,11 @@ IMAGE="openclaw-render-test:latest"
 C="openclaw-render-graceful-e2e"
 V="openclaw-render-graceful-e2e-data"
 PORT=13005
-GATEWAY_READY_MARKER="[gateway] ready"
+# Readiness comes from the gateway's own /readyz, never a log line: OpenClaw
+# 2026.11.x prints "[gateway] ready" only when readiness is already true at the
+# end of startup, and a gateway relaunched after an unclean exit is still
+# recovering its agent database at that moment, so it never prints the line.
+GATEWAY_READYZ="http://127.0.0.1:18789/readyz"
 
 _run() {
   docker rm -f "$C" >/dev/null 2>&1 || true
@@ -25,14 +29,23 @@ _run() {
     "$IMAGE" >&2
 }
 
-_ready_count() { docker logs "$C" 2>&1 | grep -cF "$GATEWAY_READY_MARKER" || true; }
+_gateway_pids() { docker exec "$C" pgrep -f 'openclaw-gateway' 2>/dev/null | tr '\n' ' ' || true; }
 
-_wait_ready_count() { # target
+_wait_gateway_ready() { # [pids the ready gateway must not include]
+  local pids p old
   for _ in $(seq 1 90); do
-    [ "$(_ready_count)" -ge "$1" ] && return 0
+    pids=$(_gateway_pids)
+    old=""
+    for p in $pids; do
+      case " ${1:-} " in *" $p "*) old=1 ;; esac
+    done
+    if [ -n "$pids" ] && [ -z "$old" ] &&
+      docker exec "$C" curl -fsS -o /dev/null --max-time 5 "$GATEWAY_READYZ" 2>/dev/null; then
+      return 0
+    fi
     sleep 2
   done
-  echo "gateway ready count never reached $1; logs follow:" >&2
+  echo "gateway never answered $GATEWAY_READYZ with 200 from a new process (pids now: ${pids:-none}, before: ${1:-none}); logs follow:" >&2
   docker logs "$C" 2>&1 | tail -80 >&2
   return 1
 }
@@ -41,7 +54,7 @@ _data() { docker run --rm -v "$V:/data" --entrypoint sh "$IMAGE" -c "$1"; }
 
 setup_file() {
   REPO="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-  export REPO IMAGE C V PORT GATEWAY_READY_MARKER
+  export REPO IMAGE C V PORT GATEWAY_READYZ
   command -v docker >/dev/null || skip "docker not installed"
   docker info >/dev/null 2>&1 || skip "docker daemon not running"
   docker build -t "$IMAGE" "$REPO" >&2
@@ -50,7 +63,7 @@ setup_file() {
   docker run --rm -v "$V:/data" --entrypoint sh "$IMAGE" -c \
     'mkdir -p /data/.openclaw && echo "{\"onboarded\":true}" >/data/onboarded.json && echo "{\"gateway\":{\"mode\":\"local\"}}" >/data/.openclaw/openclaw.json' >&2
   _run
-  _wait_ready_count 1
+  _wait_gateway_ready
 }
 
 teardown_file() {
@@ -59,11 +72,11 @@ teardown_file() {
 }
 
 @test "a SIGKILLed gateway is relaunched by alphaclaw; the container keeps running" {
-  before=$(_ready_count)
+  before=$(_gateway_pids)
   gw=$(docker exec "$C" sh -c "pgrep -f 'openclaw-gateway' | head -1")
   [ -n "$gw" ]
   docker exec "$C" kill -KILL "$gw"
-  _wait_ready_count $((before + 1))
+  _wait_gateway_ready "$before"
   [ "$(docker inspect -f '{{.State.Running}}' "$C")" = "true" ]
 }
 
@@ -113,10 +126,10 @@ teardown_file() {
 }
 
 @test "the next boot on the same volume measures the downtime" {
-  # docker logs keeps the previous run's output, so wait for one more ready line.
-  before=$(_ready_count)
+  # The container was stopped, so any gateway answering /readyz is this boot's
+  # (pids restart in the new container's namespace, so they are not compared).
   docker start "$C" >&2
-  _wait_ready_count $((before + 1))
+  _wait_gateway_ready
   for _ in $(seq 1 30); do
     HIST=$(docker exec "$C" cat /data/deploy-history.json 2>/dev/null || true)
     grep -q '"seconds"' <<<"$HIST" && break

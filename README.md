@@ -310,6 +310,10 @@ alphaclaw start                   # reproduce the failure with full stdout
 
 When you've identified and shipped the fix, restore `CMD ["/start.sh"]` in the Dockerfile.
 
+## Contributing
+
+Changes to `main` go through a pull request with green CI. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Links
 
 - [OpenClaw docs](https://docs.openclaw.ai)

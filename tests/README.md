@@ -60,7 +60,7 @@ npm run test:all  # everything
   the failure server's escape hatches: `POST /restart` exit (+ 429 dedupe,
   client-abort), the health-grace 200→503 flip, epoch anchoring, and
   EADDRINUSE bind retry.
-- **e2e** has four suites:
+- **e2e** has five suites:
   - `docker.bats` mounts a **tmpfs over `/data`** so the dir starts empty at
     runtime, reproducing how Render's disk mount shadows the Dockerfile's
     build-time `mkdir`. If `/data/tmp` exists with its sticky bit afterwards,
@@ -89,6 +89,14 @@ npm run test:all  # everything
     failure page (Restart button present), `POST /restart` relaunches
     alphaclaw, `/health` flips to 503 on the epoch-anchored schedule, and a
     mounted exit-75 stub shows immediate relaunches with no failure page.
+  - `graceful-stop.bats` boots the image with a live gateway on a named
+    volume: a SIGKILLed gateway and a SIGKILLed alphaclaw recover inside the
+    container, `docker stop -t 30` runs alphaclaw's graceful shutdown, and the
+    next boot on the same volume measures the downtime. It waits for the
+    gateway's own `/readyz` to answer 200 from a new gateway process, never
+    the `[gateway] ready` log line: OpenClaw 2026.11.x skips that line when a
+    relaunched gateway is still recovering its agent database at the end of
+    startup.
   - `tools.bats` covers the baked tools. Offline (`docker run --network none`)
     it checks every baked binary against the repo's `baked-tools.env`
     (version == pin, the shipped `/etc/baked-tools.env` byte-equals the repo
