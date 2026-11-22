@@ -8,7 +8,8 @@
 #  │ /monolith.env = MONOLITH_* lines     │  │ apt: ca-certificates curl unzip (build-only)      │
 #  │ /pg.env       = PG_MAJOR line        │  │ . baked-tools.env → arch case → dl() + sha*sum -c │
 #  │ (each file changes only when its own │  │  → /out/usr/local/bin/{caddy,tailscale,tailscaled,│
-#  │  pins change, so downstream caches   │  │     bun,bunx→bun,ngrok} ; /out/etc/baked-tools.env │
+#  │  pins change, so downstream caches   │  │     bun,bunx→bun,ngrok,gh} ;                      │
+#  │                                      │  │     /out/etc/baked-tools.env                      │
 #  │  survive unrelated pin bumps)        │  └─────────────────────────┬─────────────────────────┘
 #  └──────┬─────────────────┬────────────┘                            │
 #         │ /monolith.env   │ /pg.env                                  │
@@ -45,7 +46,9 @@
 #  │ 7 COPY start.sh, failure-server.js; ENV PATH/TMPDIR…; mkdir /data/tmp;
 #  │   EXPOSE 3000; ENTRYPOINT tini -g; CMD /start.sh   UNCHANGED
 #  └──────────────────────────────────────────────────────────────────────┘
-#  Nothing in the image or start.sh launches tailscaled/caddy; no new ports, cron, or ENV.
+#  Nothing in the image or start.sh launches tailscaled/caddy; no new ports or cron.
+#  ENV adds only GH_CONFIG_DIR=/data/.config/gh (gh's login survives redeploys) and
+#  ALPHACLAW_GATEWAY_ENV_PASSTHROUGH=GH_CONFIG_DIR (so the agent's gh reads it too).
 #  Pins are a plain file, never ARG: Render turns every service env var into a
 #  --build-arg, so an ARG default would be a dashboard-overridable pin.
 
@@ -67,8 +70,8 @@ RUN set -eu; \
     dl() { curl -fsSL --retry 5 --retry-all-errors --retry-max-time 180 --connect-timeout 20 -o "$2" "$1"; }; \
     arch="$(dpkg --print-architecture)"; \
     case "$arch" in \
-      amd64) caddy_sha="$CADDY_SHA512_AMD64"; ts_sha="$TAILSCALE_SHA256_AMD64"; bun_arch=x64;     bun_sha="$BUN_SHA256_X64";     ngrok_asset="$NGROK_ASSET_AMD64"; ngrok_sha="$NGROK_SHA256_AMD64" ;; \
-      arm64) caddy_sha="$CADDY_SHA512_ARM64"; ts_sha="$TAILSCALE_SHA256_ARM64"; bun_arch=aarch64; bun_sha="$BUN_SHA256_AARCH64"; ngrok_asset="$NGROK_ASSET_ARM64"; ngrok_sha="$NGROK_SHA256_ARM64" ;; \
+      amd64) caddy_sha="$CADDY_SHA512_AMD64"; ts_sha="$TAILSCALE_SHA256_AMD64"; bun_arch=x64;     bun_sha="$BUN_SHA256_X64";     ngrok_asset="$NGROK_ASSET_AMD64"; ngrok_sha="$NGROK_SHA256_AMD64"; gh_sha="$GH_SHA256_AMD64" ;; \
+      arm64) caddy_sha="$CADDY_SHA512_ARM64"; ts_sha="$TAILSCALE_SHA256_ARM64"; bun_arch=aarch64; bun_sha="$BUN_SHA256_AARCH64"; ngrok_asset="$NGROK_ASSET_ARM64"; ngrok_sha="$NGROK_SHA256_ARM64"; gh_sha="$GH_SHA256_ARM64" ;; \
       *) echo "unsupported architecture: $arch" >&2; exit 1 ;; \
     esac; \
     work="$(mktemp -d)"; cd "$work"; \
@@ -91,6 +94,10 @@ RUN set -eu; \
     echo "${ngrok_sha}  ngrok.tgz" | sha256sum -c -; \
     tar -xzf ngrok.tgz ngrok; \
     install -m 0755 ngrok /out/usr/local/bin/ngrok; \
+    dl "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_${arch}.tar.gz" gh.tgz; \
+    echo "${gh_sha}  gh.tgz" | sha256sum -c -; \
+    tar -xzf gh.tgz --strip-components=2 "gh_${GH_VERSION}_linux_${arch}/bin/gh"; \
+    install -m 0755 gh /out/usr/local/bin/gh; \
     install -m 0644 /opt/baked-tools.env /out/etc/baked-tools.env; \
     cd /; rm -rf "$work"
 
@@ -217,7 +224,8 @@ RUN set -eu; \
     test "$(bun --version)" = "${BUN_VERSION}"; \
     test "$(bunx --version)" = "${BUN_VERSION}"; \
     test "$(monolith --version)" = "monolith ${MONOLITH_VERSION}"; \
-    test "$(ngrok version)" = "ngrok version ${NGROK_VERSION}"
+    test "$(ngrok version)" = "ngrok version ${NGROK_VERSION}"; \
+    test "$(gh --version | head -n1 | cut -d' ' -f3)" = "${GH_VERSION}"
 
 COPY start.sh /start.sh
 COPY failure-server.js /failure-server.js
@@ -225,6 +233,15 @@ RUN chmod +x /start.sh
 
 ENV PATH="/app/node_modules/.bin:$PATH"
 ENV ALPHACLAW_ROOT_DIR=/data
+
+# gh keeps its login (hosts.yml holds the token) on the persistent disk so it
+# survives redeploys. Never under /data/.openclaw: AlphaClaw makes that folder a
+# git repo and pushes it to the user's GitHub remote. No token is in the image.
+# AlphaClaw passes only allowlisted env keys to the OpenClaw gateway, and the
+# gateway sets XDG_CONFIG_HOME=/data/.openclaw, so without the passthrough the
+# agent's gh would keep its login in /data/.openclaw/gh instead.
+ENV GH_CONFIG_DIR=/data/.config/gh
+ENV ALPHACLAW_GATEWAY_ENV_PASSTHROUGH=GH_CONFIG_DIR
 
 # Route temp onto the persistent disk instead of the container's ephemeral /tmp.
 # OpenClaw is migrating hardcoded /tmp callsites to TMPDIR-aware APIs; any code
