@@ -395,6 +395,8 @@ env_value() { sed -nE "s/^$1=(.*)$/\1/p" "$ENVF"; }
 
 @test "Dockerfile: gh keeps its login under /data, never in the git-synced /data/.openclaw" {
   grep -qxF 'ENV GH_CONFIG_DIR=/data/.config/gh' "$DF"
+  # AlphaClaw withholds non-allowlisted keys from the gateway, whose XDG_CONFIG_HOME is /data/.openclaw
+  grep -qxF 'ENV ALPHACLAW_GATEWAY_ENV_PASSTHROUGH=GH_CONFIG_DIR' "$DF"
   # AlphaClaw makes /data/.openclaw a git repo and pushes it; gh's hosts.yml holds a token
   run grep -E 'GH_CONFIG_DIR=/data/\.openclaw' "$DF"
   [ "$status" -ne 0 ]

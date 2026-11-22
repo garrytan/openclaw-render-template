@@ -47,7 +47,8 @@
 #  │   EXPOSE 3000; ENTRYPOINT tini -g; CMD /start.sh   UNCHANGED
 #  └──────────────────────────────────────────────────────────────────────┘
 #  Nothing in the image or start.sh launches tailscaled/caddy; no new ports or cron.
-#  ENV adds only GH_CONFIG_DIR=/data/.config/gh (gh's login survives redeploys).
+#  ENV adds only GH_CONFIG_DIR=/data/.config/gh (gh's login survives redeploys) and
+#  ALPHACLAW_GATEWAY_ENV_PASSTHROUGH=GH_CONFIG_DIR (so the agent's gh reads it too).
 #  Pins are a plain file, never ARG: Render turns every service env var into a
 #  --build-arg, so an ARG default would be a dashboard-overridable pin.
 
@@ -236,7 +237,11 @@ ENV ALPHACLAW_ROOT_DIR=/data
 # gh keeps its login (hosts.yml holds the token) on the persistent disk so it
 # survives redeploys. Never under /data/.openclaw: AlphaClaw makes that folder a
 # git repo and pushes it to the user's GitHub remote. No token is in the image.
+# AlphaClaw passes only allowlisted env keys to the OpenClaw gateway, and the
+# gateway sets XDG_CONFIG_HOME=/data/.openclaw, so without the passthrough the
+# agent's gh would keep its login in /data/.openclaw/gh instead.
 ENV GH_CONFIG_DIR=/data/.config/gh
+ENV ALPHACLAW_GATEWAY_ENV_PASSTHROUGH=GH_CONFIG_DIR
 
 # Route temp onto the persistent disk instead of the container's ephemeral /tmp.
 # OpenClaw is migrating hardcoded /tmp callsites to TMPDIR-aware APIs; any code

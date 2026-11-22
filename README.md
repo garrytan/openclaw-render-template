@@ -217,7 +217,7 @@ These are things an operator *may* run by hand from the Render **Shell** tab. No
 - **Caddy** — keep configs under `/data`, e.g. `caddy validate --config /data/Caddyfile`.
 - **Bun** — `bun install -g` lands in the ephemeral `/root/.bun` unless `BUN_INSTALL` points under `/data` (e.g. `BUN_INSTALL=/data/.bun`).
 - **Xvfb** — a headed browser needs a display: `xvfb-run -a <command>` starts a throwaway virtual display for one command.
-- **gh** — OpenClaw's GitHub skill runs `gh` by name. Sign in once with `gh auth login` in the Render shell, or set `GH_TOKEN` as a service environment variable. A `gh auth login` is stored under `GH_CONFIG_DIR=/data/.config/gh`, so it survives redeploys. The image carries no token.
+- **gh** — OpenClaw's GitHub skill runs `gh` by name. Sign in once with `gh auth login` in the Render shell. The login is stored under `GH_CONFIG_DIR=/data/.config/gh`, so it survives redeploys, and the image passes `GH_CONFIG_DIR` through to the agent with `ALPHACLAW_GATEWAY_ENV_PASSTHROUGH=GH_CONFIG_DIR` (if you set that variable yourself, include `GH_CONFIG_DIR` in it). AlphaClaw does not pass `GH_TOKEN` to the agent; a `GITHUB_TOKEN` service variable does reach it, and gh uses that token ahead of the login. The image carries no token.
 - **ngrok** — keep its auth token and config under `/data` (for example `ngrok config add-authtoken <token> --config /data/ngrok/ngrok.yml`, then pass the same `--config` when you start a tunnel); nothing starts a tunnel for you.
 - **PostgreSQL client** — `psql`, `pg_dump`, `pg_restore` for an external database; there is no server in the image.
 

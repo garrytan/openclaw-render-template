@@ -155,6 +155,8 @@ teardown_file() {
   [ "$output" = "/usr/local/bin/gh" ]
   run offline 'echo "$GH_CONFIG_DIR"'
   [ "$output" = "/data/.config/gh" ]
+  run offline 'echo "$ALPHACLAW_GATEWAY_ENV_PASSTHROUGH"'
+  [ "$output" = "GH_CONFIG_DIR" ]
   # no login is baked into the image
   run offline 'gh auth status >/dev/null 2>&1; echo "exit=$?"'
   [ "$output" = "exit=1" ]
