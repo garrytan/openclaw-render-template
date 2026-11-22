@@ -155,6 +155,7 @@ env_value() { sed -nE "s/^$1=(.*)$/\1/p" "$ENVF"; }
   grep -qF 'test "$(bunx --version)" = "${BUN_VERSION}"' <<<"$final"
   grep -qF 'test "$(monolith --version)" = "monolith ${MONOLITH_VERSION}"' <<<"$final"
   grep -qF 'test "$(ngrok version)" = "ngrok version ${NGROK_VERSION}"' <<<"$final"
+  grep -qF "test \"\$(gh --version | head -n1 | cut -d' ' -f3)\" = \"\${GH_VERSION}\"" <<<"$final"
 }
 
 @test "Dockerfile: the header diagram names every package the apt/PGDG RUN installs" {
@@ -210,8 +211,8 @@ env_value() { sed -nE "s/^$1=(.*)$/\1/p" "$ENVF"; }
 
 @test "Dockerfile: every artifact download in the tools stage is checksum-verified" {
   code=$(stage_text tools | grep -vE '^[[:space:]]*#')
-  [ "$(grep -c 'dl "https://' <<<"$code")" -eq 4 ]
-  [ "$(grep -Ec 'sha(256|512)sum -c -' <<<"$code")" -eq 4 ]
+  [ "$(grep -c 'dl "https://' <<<"$code")" -eq 5 ]
+  [ "$(grep -Ec 'sha(256|512)sum -c -' <<<"$code")" -eq 5 ]
   # the only command-position curl in the stage is the dl() definition itself
   [ "$(grep -Ec "$CURL_CMD_ERE" <<<"$code")" -eq 1 ]
 }
@@ -378,6 +379,24 @@ env_value() { sed -nE "s/^$1=(.*)$/\1/p" "$ENVF"; }
   grep -qF 'install -m 0755 ngrok /out/usr/local/bin/ngrok;' <<<"$tools"
   # the floating "stable" channel URL would break the build at every ngrok release
   run grep -E 'ngrok-v3-stable' <<<"$DF_CODE"
+  [ "$status" -ne 0 ]
+}
+
+@test "Dockerfile: gh is downloaded from its versioned cli/cli release and checksum-verified" {
+  tools=$(stage_text tools)
+  grep -qF 'gh_sha="$GH_SHA256_AMD64"' <<<"$tools"
+  grep -qF 'gh_sha="$GH_SHA256_ARM64"' <<<"$tools"
+  grep -qF 'dl "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_${arch}.tar.gz" gh.tgz;' <<<"$tools"
+  grep -qF 'echo "${gh_sha}  gh.tgz" | sha256sum -c -;' <<<"$tools"
+  grep -qF 'install -m 0755 gh /out/usr/local/bin/gh;' <<<"$tools"
+  # the checksum runs before the tarball is unpacked
+  [ "$(grep -n 'gh.tgz" | sha256sum -c -' <<<"$tools" | cut -d: -f1)" -lt "$(grep -n 'tar -xzf gh.tgz' <<<"$tools" | cut -d: -f1)" ]
+}
+
+@test "Dockerfile: gh keeps its login under /data, never in the git-synced /data/.openclaw" {
+  grep -qxF 'ENV GH_CONFIG_DIR=/data/.config/gh' "$DF"
+  # AlphaClaw makes /data/.openclaw a git repo and pushes it; gh's hosts.yml holds a token
+  run grep -E 'GH_CONFIG_DIR=/data/\.openclaw' "$DF"
   [ "$status" -ne 0 ]
 }
 

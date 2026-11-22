@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0.59] - 2026-11-22
+
+### Added
+- The image now ships the GitHub CLI, `gh` 2.105.0, at `/usr/local/bin/gh`. OpenClaw's bundled GitHub skill runs `gh` by name, and the image had none, so the skill failed until someone installed it by hand (and every redeploy removed it). It is downloaded from the cli/cli release, checked against the SHA-256 sums in upstream's `gh_2.105.0_checksums.txt` (amd64 and arm64), and the build fails unless `gh --version` reports the pin.
+- `GH_CONFIG_DIR=/data/.config/gh`, so a `gh auth login` is kept on the persistent disk across redeploys. It is deliberately outside `/data/.openclaw`, which AlphaClaw turns into a git repo and pushes to your GitHub remote. No token is in the image.
+- Thanks to @jjmata, whose PR #5 proposed this.
+
 ## [2.0.0.58] - 2026-11-21
 
 ### Fixed

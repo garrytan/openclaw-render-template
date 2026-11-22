@@ -188,6 +188,7 @@ The image ships a fixed set of operator/agent tools so they survive redeploys in
 | Tailscale (`tailscale`, `tailscaled`)                                    | 1.102.3         | pkgs.tailscale.com static tgz                                | SHA-256 sidecar                     | `/usr/local/bin/{tailscale,tailscaled}`                           | BSD-3-Clause |
 | Bun (`bun`, `bunx`)                                                      | 1.4.4           | GitHub release zip                                           | SHA-256 from `SHASUMS256.txt`       | `/usr/local/bin/{bun,bunx}`                                       | MIT          |
 | ngrok | 3.39.13 | ngrok's versioned release tarball (bin.equinox.io) | SHA-256 pinned in `baked-tools.env` (ngrok publishes no checksum file; matches Arch's AUR package) | `/usr/local/bin/ngrok` | ngrok Terms of Service (proprietary) |
+| GitHub CLI (`gh`) | 2.105.0 | cli/cli GitHub release tarball | SHA-256 from upstream `gh_<ver>_checksums.txt` | `/usr/local/bin/gh` | MIT |
 | monolith                                                                 | 2.10.1          | built from git rev `47affd5f…` with `cargo install --locked` | commit + `Cargo.lock`               | `/usr/local/bin/monolith`                                         | CC0-1.0      |
 | PostgreSQL client                                                        | 17              | PGDG signed apt repo                                         | apt signature + key fingerprint     | `/usr/lib/postgresql/17/bin` (+ `/usr/bin` via `pg_wrapper`)      | PostgreSQL   |
 | git-lfs, jq, openssl, ca-certificates, flock (util-linux), fuser (psmisc) | Debian bookworm | Debian bookworm apt                                          | apt signatures                      | `/usr/bin`, `/bin`                                                | see Debian   |
@@ -216,6 +217,7 @@ These are things an operator *may* run by hand from the Render **Shell** tab. No
 - **Caddy** — keep configs under `/data`, e.g. `caddy validate --config /data/Caddyfile`.
 - **Bun** — `bun install -g` lands in the ephemeral `/root/.bun` unless `BUN_INSTALL` points under `/data` (e.g. `BUN_INSTALL=/data/.bun`).
 - **Xvfb** — a headed browser needs a display: `xvfb-run -a <command>` starts a throwaway virtual display for one command.
+- **gh** — OpenClaw's GitHub skill runs `gh` by name. Sign in once with `gh auth login` in the Render shell, or set `GH_TOKEN` as a service environment variable. A `gh auth login` is stored under `GH_CONFIG_DIR=/data/.config/gh`, so it survives redeploys. The image carries no token.
 - **ngrok** — keep its auth token and config under `/data` (for example `ngrok config add-authtoken <token> --config /data/ngrok/ngrok.yml`, then pass the same `--config` when you start a tunnel); nothing starts a tunnel for you.
 - **PostgreSQL client** — `psql`, `pg_dump`, `pg_restore` for an external database; there is no server in the image.
 

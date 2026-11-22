@@ -59,7 +59,7 @@ setup_file() {
   # shellcheck disable=SC1091
   . "$REPO/baked-tools.env"
   set +a
-  for k in CADDY_VERSION TAILSCALE_VERSION BUN_VERSION MONOLITH_VERSION NGROK_VERSION PG_MAJOR; do
+  for k in CADDY_VERSION TAILSCALE_VERSION BUN_VERSION MONOLITH_VERSION NGROK_VERSION GH_VERSION PG_MAJOR; do
     [ -n "${!k}" ] || { echo "baked-tools.env is missing $k" >&2; return 1; }
   done
   ARCH="$(docker run --rm "$IMAGE" dpkg --print-architecture)"
@@ -145,6 +145,21 @@ teardown_file() {
   run offline "bun -e 'console.log(6*7)'"
   [ "$status" -eq 0 ]
   [ "$output" = "42" ]
+}
+
+@test "gh: pinned version, on PATH, runs offline, keeps its config under /data" {
+  run offline 'gh --version | head -n1'
+  [ "$status" -eq 0 ]
+  [ "$(cut -d' ' -f3 <<<"$output")" = "$GH_VERSION" ]
+  run offline 'command -v gh'
+  [ "$output" = "/usr/local/bin/gh" ]
+  run offline 'echo "$GH_CONFIG_DIR"'
+  [ "$output" = "/data/.config/gh" ]
+  # no login is baked into the image
+  run offline 'gh auth status >/dev/null 2>&1; echo "exit=$?"'
+  [ "$output" = "exit=1" ]
+  run offline 'test -e /data/.config/gh/hosts.yml'
+  [ "$status" -ne 0 ]
 }
 
 @test "monolith: pinned version, archives a local page offline" {
@@ -315,7 +330,7 @@ teardown_file() {
              /usr/local/bin/tailscaled "/usr/lib/postgresql/${PG_MAJOR}/bin/psql" \
              "/usr/lib/postgresql/${PG_MAJOR}/bin/pg_dump" "/usr/lib/postgresql/${PG_MAJOR}/bin/pg_restore" \
              /usr/bin/git-lfs /usr/bin/jq /usr/bin/ffmpeg /usr/bin/ffprobe /usr/bin/zstd /usr/bin/unzip \
-             /usr/bin/zip /usr/bin/xz /usr/bin/sqlite3 /usr/bin/rg /usr/bin/convert /usr/local/bin/ngrok \
+             /usr/bin/zip /usr/bin/xz /usr/bin/sqlite3 /usr/bin/rg /usr/bin/convert /usr/local/bin/ngrok /usr/local/bin/gh \
              /usr/bin/Xvfb /usr/bin/xauth /usr/bin/xdpyinfo /usr/bin/xkbcomp /usr/bin/mkfontscale; do
     run offline "test -x $bin"
     [ "$status" -eq 0 ] || { echo "$bin is missing or not executable"; false; }
